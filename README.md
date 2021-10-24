@@ -2,7 +2,7 @@
 
 Prerequisites:
 
-Python3
-Python Packages:
-- requests
-- eth-brownie
+* Python 3
+* Python Packages:
+    - requests
+    - eth-brownie
