@@ -44,6 +44,8 @@ def get_summoners():
                 "https://api.ftmscan.com/api", params=ETHERSCAN_API_PARAMS
             )
         ).status_code == 200:
+            # loop through the JSON object and store metadata in the summoners
+            # dictionary, using "tokenID" as key
             for metadata in response.json()["result"]:
                 summoners[metadata["tokenID"]] = metadata
             return len(summoners)
