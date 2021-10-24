@@ -3,6 +3,6 @@
 Prerequisites:
 
 * Python 3
-* Python Packages:
+* Python Packages (installed with `pip install [packagename]`)
     - requests
     - eth-brownie
