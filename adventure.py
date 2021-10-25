@@ -2,7 +2,7 @@ import sys
 import json
 import time
 import requests
-import pprint
+import math
 from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
@@ -20,7 +20,20 @@ FTMSCAN_API_PARAMS = {
 }
 
 # Classes Number/Name dictionary
-CLASSES = {1: ""}
+CLASSES = {
+    1: "Barbarian",
+    2: "Bard",
+    3: "Cleric",
+    4: "Druid",
+    5: "Fighter",
+    6: "Monk",
+    7: "Paladin",
+    8: "Ranger",
+    9: "Rogue",
+    10: "Sorcerer",
+    11: "Wizard",
+}
+
 DECIMALS = 10 ** 18
 
 
@@ -32,22 +45,29 @@ def main():
     rarity_contract = Contract.from_explorer(ADDRESS_RARITY_CONTRACT, owner=user)
 
     if get_summoners(summoners):
-        print(f"{len(summoners)} summoners found!")
         print()
+        print(f"{len(summoners)} summoners found:")
     else:
-        # TO DO
-        pass
+        pass  # TO DO
 
     # Fill the dictionary with on-chain data
     for id in summoners.keys():
         summoners[id] = get_summoner_info(rarity_contract, id)
         print(
-            f'Summoner #{id} -> XP: {summoners[id]["XP"]}, Log: {summoners[id]["Log"]}, Class: {summoners[id]["ClassNumber"]}, Level: {summoners[id]["Level"]}'
+            f'Summoner #{id} -> A Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with {summoners[id]["XP"]} XP'
         )
 
-    # Send our summoners on adventures
-    for id in summoners.keys():
-        adventure(rarity_contract, id)
+    # Start the daycare loop
+    while True:
+        loop_timer = math.ceil(time.time())
+        # Send our summoners on adventures
+        for id in summoners.keys():
+            # Only adventure when ready
+            if loop_timer > summoners[id]["Log"]:
+                adventure(rarity_contract, id)
+
+        print(f"No summoners are ready for adventure, waiting...")
+        time.sleep(5)
 
 
 def get_summoners(summoners):
@@ -71,7 +91,7 @@ def get_summoners(summoners):
 
 
 def get_summoner_info(contract, id):
-    # Sometimes the contract call to 'summoner' method will return all zeros, so we loop until we get a non-zero result
+    # Sometimes the contract call to 'summoner' method will return all zeros, so loop until it returns real results
     while True:
         tx = contract.summoner(id)
         if tx[3]:
@@ -79,17 +99,16 @@ def get_summoner_info(contract, id):
                 "XP": int(tx[0] / DECIMALS),
                 "Log": tx[1],
                 "ClassNumber": tx[2],
+                "ClassName": CLASSES[tx[2]],
                 "Level": tx[3],
             }
         else:
-            print("Retrying...")
             time.sleep(1)
 
 
 def adventure(contract, id):
-    print(f"Simulating adventure with summoner id: {id}")
-    # print(f"Adventuring with summoner id: {id}")
-    # tx = contract.adventure(id)
+    print(f"Adventuring with summoner id: {id}")
+    tx = contract.adventure(id)
 
 
 if __name__ == "__main__":
