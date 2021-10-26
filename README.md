@@ -13,5 +13,5 @@ Create a dedicated account on the console using `brownie accounts new`, enter th
 Run `python3 adventure.py`, unlock brownie account data using password, watch your summoners go on their adventures
 
 ## TO-DO
-- Verify with contract if summoner is ready to go on an adventure before sending
-- Error handling
+- Improve README
+- Refactor, too many functions in adventure.py

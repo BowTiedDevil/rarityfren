@@ -93,7 +93,7 @@ def main():
 
     # Start the babysitting loop
     print(
-        "Entering babysitting loop. Adventure, LevelUp, and ClaimGold messages will appear below when triggered."
+        "\nEntering babysitting loop. Adventure, LevelUp, and ClaimGold messages will appear below when triggered."
     )
     while True:
         loop_timer = math.ceil(time.time())
@@ -103,7 +103,12 @@ def main():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
                 print(f"[Adventure] Sending Summoner {id} on adventure")
-                adventure(summoner_contract, id)
+                try:
+                    adventure(summoner_contract, id, user)
+                except ValueError:
+                    print("Failed! Retrying on next loop")
+                    break
+
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
@@ -115,23 +120,27 @@ def main():
             # Level up when ready
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
                 print(f"[LevelUp] Summoner {id}")
-                level_up(summoner_contract, id)
+                level_up(summoner_contract, id, user)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
-                # Claim any gold after leveling up
                 print(f"[ClaimGold] Claiming gold for Summoner {id}")
-                claim_gold(gold_contract, id)
+                claim_gold(gold_contract, id, user)
 
-        # Repeat loop every second
-        time.sleep(1)
+        # Repeat loop every 10 seconds
+        time.sleep(10)
 
 
-def claim_gold(contract, id):
-    if contract.claim(id):
-        print("Gold claimed for summoner #{id}")
+def claim_gold(contract, id, user):
+    try:
+        contract.claim(id, {"from": user})
+        print(f"Gold claimed for summoner #{id}")
+        return True
+    except ValueError:
+        print("Error")
+        return False
 
 
 def get_summoners(summoners):
@@ -175,14 +184,12 @@ def get_summoner_next_level_xp(contract, level):
             time.sleep(5)
 
 
-def adventure(contract, id):
-    print(f"Adventuring with summoner #{id}")
-    tx = contract.adventure(id)
+def adventure(contract, id, user):
+    contract.adventure(id, {"from": user})
 
 
-def level_up(contract, id):
-    print(f"Leveling up summoner #{id}")
-    if tx := contract.level_up(id):
+def level_up(contract, id, user):
+    if tx := contract.level_up(id, {"from": user}):
         print(f'New Level: {tx.events["leveled"]["level"]}')
         return tx.events["leveled"]["level"]
     else:
