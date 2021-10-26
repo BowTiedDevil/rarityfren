@@ -60,7 +60,7 @@ def main():
 
     # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
     try:
-        summoner_contract = Contract("rarity")
+        summoner_contract = Contract("rarity-summoner")
     except ValueError:
         summoner_contract = Contract.from_explorer(
             SUMMONER_CONTRACT_ADDRESS, owner=user
@@ -93,7 +93,7 @@ def main():
 
     # Start the babysitting loop
     print(
-        "Entering babysitting loop. Adventure and LevelUp messages will appear below when triggered."
+        "Entering babysitting loop. Adventure, LevelUp, and ClaimGold messages will appear below when triggered."
     )
     while True:
         loop_timer = math.ceil(time.time())
@@ -102,6 +102,7 @@ def main():
         for id in summoners.keys():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
+                print(f"[Adventure] Sending Summoner {id} on adventure")
                 adventure(summoner_contract, id)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
@@ -113,21 +114,24 @@ def main():
         for id in summoners.keys():
             # Level up when ready
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
+                print(f"[LevelUp] Summoner {id}")
                 level_up(summoner_contract, id)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
+                # Claim any gold after leveling up
+                print(f"[ClaimGold] Claiming gold for Summoner {id}")
                 claim_gold(gold_contract, id)
 
-        # Repeat loop
-        time.sleep(5)
+        # Repeat loop every second
+        time.sleep(1)
 
 
 def claim_gold(contract, id):
-    print("Would claim gold here for summoner #{id}")
-    # tx = contract.claim(id)
+    if contract.claim(id):
+        print("Gold claimed for summoner #{id}")
 
 
 def get_summoners(summoners):
