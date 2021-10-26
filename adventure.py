@@ -1,5 +1,6 @@
 import sys
 import json
+import pprint
 import time
 import requests
 import math
@@ -38,43 +39,68 @@ DECIMALS = 10 ** 18
 
 
 def main():
+    # Initialize a blank summoners dictionary
     summoners = {}
 
     user = accounts.load("rarityuser", password="")
     network.connect("ftm-main")
-    rarity_contract = Contract.from_explorer(ADDRESS_RARITY_CONTRACT, owner=user)
+
+    # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
+    try:
+        rarity_contract = Contract("rarity")
+    except ValueError:
+        rarity_contract = Contract.from_explorer(ADDRESS_RARITY_CONTRACT, owner=user)
+        rarity_contract.set_alias("rarity")
 
     if get_summoners(summoners):
-        print()
-        print(f"{len(summoners)} summoners found:")
+        print(f"Found {len(summoners)} summoners:")
     else:
-        pass  # TO DO
+        sys.exit(
+            "No summoners found! Check wallet address, FTMScan API key, and ensure that you already have a summoner"
+        )
 
     # Fill the dictionary with on-chain data
     for id in summoners.keys():
         summoners[id] = get_summoner_info(rarity_contract, id)
+        summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
+            rarity_contract, summoners[id]["Level"]
+        )
         print(
-            f'Summoner #{id} -> A Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with {summoners[id]["XP"]} XP'
+            f'• Summoner #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the daycare loop
     while True:
         loop_timer = math.ceil(time.time())
+
         # Send our summoners on adventures
         for id in summoners.keys():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
                 adventure(rarity_contract, id)
+                # refresh summoner info
+                summoners[id] = get_summoner_info(rarity_contract, id)
+                summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
+                    rarity_contract, summoners[id]["Level"]
+                )
 
-        print(f"No summoners are ready for adventure, waiting...")
+        # Level up
+        for id in summoners.keys():
+            # Level up when ready
+            if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
+                level_up(rarity_contract, id)
+                # refresh summoner info
+                summoners[id] = get_summoner_info(rarity_contract, id)
+                summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
+                    rarity_contract, summoners[id]["Level"]
+                )
+
+        # Repeat loop
         time.sleep(5)
 
 
 def get_summoners(summoners):
     while True:
-        print(
-            f"Querying FTMScan API for Rarity summoner data at address {ADDRESS_USER}..."
-        )
         if (
             response := requests.get(
                 "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
@@ -86,12 +112,11 @@ def get_summoners(summoners):
                 summoners[int(metadata["tokenID"])] = {}
             return len(summoners)
         else:
-            print("retrying...")
             time.sleep(5)
 
 
 def get_summoner_info(contract, id):
-    # Sometimes the contract call to 'summoner' method will return all zeros, so loop until it returns real results
+    # Sometimes the contract call to the 'summoner' method will return all zeros, so loop until it returns real results
     while True:
         tx = contract.summoner(id)
         if tx[3]:
@@ -103,12 +128,30 @@ def get_summoner_info(contract, id):
                 "Level": tx[3],
             }
         else:
-            time.sleep(1)
+            time.sleep(5)
+
+
+def get_summoner_next_level_xp(contract, level):
+    # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
+    while True:
+        if tx := contract.xp_required(level):
+            return int(tx / DECIMALS)
+        else:
+            time.sleep(5)
 
 
 def adventure(contract, id):
-    print(f"Adventuring with summoner id: {id}")
+    print(f"Adventuring with summoner #{id}")
     tx = contract.adventure(id)
+
+
+def level_up(contract, id):
+    print(f"Leveling up summoner #{id}")
+    if tx := contract.level_up(id):
+        print(f'New Level: {tx.events["leveled"]["level"]}')
+        return tx.events["leveled"]["level"]
+    else:
+        return 0
 
 
 if __name__ == "__main__":
