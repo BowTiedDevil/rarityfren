@@ -42,8 +42,19 @@ def main():
     # Initialize a blank summoners dictionary
     summoners = {}
 
-    user = accounts.load("rarityuser", password="")
-    network.connect("ftm-main")
+    try:
+        user = accounts.load("rarity")
+    except:
+        sys.exit(
+            "Could not load account!\nVerify that your account is listed using 'brownie accounts list' and that you are using the correct password.\nIf you have not added an account, run 'brownie accounts new rarity' now."
+        )
+
+    try:
+        network.connect("ftm-main")
+    except:
+        sys.exit(
+            "Could not connect to the Fantom Mainnet! Verify that brownie lists the Fantom Mainnet using 'brownie networks list'"
+        )
 
     # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
     try:
@@ -53,7 +64,7 @@ def main():
         rarity_contract.set_alias("rarity")
 
     if get_summoners(summoners):
-        print(f"Found {len(summoners)} summoners:")
+        pass
     else:
         sys.exit(
             "No summoners found! Check wallet address, FTMScan API key, and ensure that you already have a summoner"
@@ -66,10 +77,13 @@ def main():
             rarity_contract, summoners[id]["Level"]
         )
         print(
-            f'• Summoner #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
+            f'• Found Summoner #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the daycare loop
+    print(
+        "Entering babysitting loop. Adventure and LevelUp messages will appear below when triggered."
+    )
     while True:
         loop_timer = math.ceil(time.time())
 
