@@ -8,16 +8,18 @@ from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
 ADDRESS_USER = "0x31d8204ba31768CB4CfA111B429BDc8F2c6f477b"
-ETHERSCAN_API_KEY = "8C6RD312AG41JTZK1DK1D4538B6WBJFZBN"
+FTMSCAN_API_KEY = "8C6RD312AG41JTZK1DK1D4538B6WBJFZBN"
 
-# Contract and API variables - do not change!
-ADDRESS_RARITY_CONTRACT = "0xce761D788DF608BD21bdd59d6f4B54b2e27F25Bb"
+# Contract addresses - do not change!
+SUMMONER_CONTRACT_ADDRESS = "0xce761D788DF608BD21bdd59d6f4B54b2e27F25Bb"
+GOLD_CONTRACT_ADDRESS = "0x2069B76Afe6b734Fb65D1d099E7ec64ee9CC76B2"
+
 FTMSCAN_API_PARAMS = {
     "module": "account",
     "action": "tokennfttx",
-    "contractaddress": ADDRESS_RARITY_CONTRACT,
+    "contractaddress": SUMMONER_CONTRACT_ADDRESS,
     "address": ADDRESS_USER,
-    "apikey": ETHERSCAN_API_KEY,
+    "apikey": FTMSCAN_API_KEY,
 }
 
 # Classes Number/Name dictionary
@@ -58,10 +60,19 @@ def main():
 
     # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
     try:
-        rarity_contract = Contract("rarity")
+        summoner_contract = Contract("rarity")
     except ValueError:
-        rarity_contract = Contract.from_explorer(ADDRESS_RARITY_CONTRACT, owner=user)
-        rarity_contract.set_alias("rarity")
+        summoner_contract = Contract.from_explorer(
+            SUMMONER_CONTRACT_ADDRESS, owner=user
+        )
+        summoner_contract.set_alias("rarity-summoner")
+
+    # Attempt to load the saved rarity gold contract. If not found, fetch from FTM network explorer
+    try:
+        gold_contract = Contract("rarity-gold")
+    except ValueError:
+        gold_contract = Contract.from_explorer(GOLD_CONTRACT_ADDRESS, owner=user)
+        gold_contract.set_alias("rarity-gold")
 
     if get_summoners(summoners):
         pass
@@ -72,15 +83,15 @@ def main():
 
     # Fill the dictionary with on-chain data
     for id in summoners.keys():
-        summoners[id] = get_summoner_info(rarity_contract, id)
+        summoners[id] = get_summoner_info(summoner_contract, id)
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-            rarity_contract, summoners[id]["Level"]
+            summoner_contract, summoners[id]["Level"]
         )
         print(
             f'• Found Summoner #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
-    # Start the daycare loop
+    # Start the babysitting loop
     print(
         "Entering babysitting loop. Adventure and LevelUp messages will appear below when triggered."
     )
@@ -91,26 +102,32 @@ def main():
         for id in summoners.keys():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
-                adventure(rarity_contract, id)
+                adventure(summoner_contract, id)
                 # refresh summoner info
-                summoners[id] = get_summoner_info(rarity_contract, id)
+                summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-                    rarity_contract, summoners[id]["Level"]
+                    summoner_contract, summoners[id]["Level"]
                 )
 
         # Level up
         for id in summoners.keys():
             # Level up when ready
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                level_up(rarity_contract, id)
+                level_up(summoner_contract, id)
                 # refresh summoner info
-                summoners[id] = get_summoner_info(rarity_contract, id)
+                summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-                    rarity_contract, summoners[id]["Level"]
+                    summoner_contract, summoners[id]["Level"]
                 )
+                claim_gold(gold_contract, id)
 
         # Repeat loop
         time.sleep(5)
+
+
+def claim_gold(contract, id):
+    print("Would claim gold here for summoner #{id}")
+    # tx = contract.claim(id)
 
 
 def get_summoners(summoners):
