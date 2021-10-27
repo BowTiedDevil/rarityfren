@@ -9,7 +9,7 @@
 ## Brownie Setup
 - Create a dedicated account on the console using `brownie accounts new`, enter the private key from your Metamask wallet (or similar). Edit the `ADDRESS_USER` value in `adventure.py` to match the public address.
 - Create a dedicated network for interacting with the Fantom blockchain by entering the following:
-`brownie networks add "Fantom" fantom chainid=250 host=https://rpc.ftm.tools explorer=https://ftmscan.com`
+`brownie networks add "Fantom" fantom chainid=250 host=https://rpc.ftm.tools explorer=https://ftmscan.com/api`
 **Note** Brownie comes with a built-in Fantom network labeled "ftm-main", which is outdated and often returns bad data when queried.
 
 ## Basic Use
