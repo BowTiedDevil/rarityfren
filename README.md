@@ -16,7 +16,7 @@
 Run `python3 adventure.py`, unlock brownie account data using password, watch your summoners go on their adventures
 
 ## TO-DO
-- Add more contracts for feats, skills, dungeons, etc.
+- Load address and API keys from env instead of hard-coding
 - Add try/except error handling for all contract calls
 - Refactor functions, adventure.py is getting too big
 - Add expansion contracts
