@@ -182,11 +182,9 @@ def get_summoner_info(contract, id):
 def get_summoner_next_level_xp(contract, level):
     # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
     while True:
-        try:
-            tx = contract.xp_required.call(level)
+        if tx := contract.xp_required.call(level):
             return int(tx / DECIMALS)
-        except ValueError:
-            # tx will fail as gas price fluctuates, so passing will loop until success
+        else:
             pass
 
 
