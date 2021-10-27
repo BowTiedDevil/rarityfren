@@ -58,6 +58,8 @@ def main():
             "Could not connect to the Fantom Mainnet! Verify that brownie lists the Fantom Mainnet using 'brownie networks list'"
         )
 
+    print("Contracts loaded:")
+
     # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
     try:
         summoner_contract = Contract("rarity-summoner")
@@ -67,7 +69,7 @@ def main():
         )
         summoner_contract.set_alias("rarity-summoner")
     finally:
-        print("Contract loaded: Rarity Summoner")
+        print("• Rarity Summoner")
 
     # Attempt to load the saved rarity gold contract. If not found, fetch from FTM network explorer
     try:
@@ -76,7 +78,7 @@ def main():
         gold_contract = Contract.from_explorer(GOLD_CONTRACT_ADDRESS, owner=user)
         gold_contract.set_alias("rarity-gold")
     finally:
-        print("Contract loaded: Rarity Gold")
+        print("• Rarity Gold")
 
     if get_summoners(summoners):
         pass
@@ -86,7 +88,7 @@ def main():
         )
 
     # Fill the dictionary with on-chain data
-    print("Summoners found!")
+    print("Summoners found:")
     for id in summoners.keys():
         summoners[id] = get_summoner_info(summoner_contract, id)
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
@@ -103,7 +105,6 @@ def main():
     while True:
         loop_timer = math.ceil(time.time())
 
-        # Send our summoners on adventures
         for id in summoners.keys():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
@@ -115,19 +116,20 @@ def main():
                     summoner_contract, summoners[id]["Level"]
                 )
 
-        # Level up
-        for id in summoners.keys():
-            # Level up when ready
+            # Level up if XP is sufficient
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
                 print(f"[LevelUp] Summoner {id}")
                 level_up(summoner_contract, id, user)
+
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
-                if claim_gold(gold_contract, id, user):
-                    print(f"[ClaimGold] Claiming gold for Summoner {id}")
+
+                # claim gold
+                print(f"[ClaimGold] Claiming gold for Summoner {id}")
+                claim_gold(gold_contract, id, user)
 
         # Repeat loop every second
         time.sleep(1)
