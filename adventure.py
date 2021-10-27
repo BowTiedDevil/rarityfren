@@ -13,6 +13,7 @@ FTMSCAN_API_KEY = "8C6RD312AG41JTZK1DK1D4538B6WBJFZBN"
 # Contract addresses - do not change!
 SUMMONER_CONTRACT_ADDRESS = "0xce761D788DF608BD21bdd59d6f4B54b2e27F25Bb"
 GOLD_CONTRACT_ADDRESS = "0x2069B76Afe6b734Fb65D1d099E7ec64ee9CC76B2"
+CELLAR_CONTRACT_ADDRESS = "0x2A0F1cB17680161cF255348dDFDeE94ea8Ca196A"
 
 FTMSCAN_API_PARAMS = {
     "module": "account",
@@ -52,33 +53,19 @@ def main():
         )
 
     try:
-        network.connect("ftm-main")
+        network.connect("fantom")
     except:
         sys.exit(
             "Could not connect to the Fantom Mainnet! Verify that brownie lists the Fantom Mainnet using 'brownie networks list'"
         )
 
-    print("Contracts loaded:")
+    print("\nContracts loaded:")
 
-    # Attempt to load the saved rarity contract. If not found, fetch from FTM network explorer
-    try:
-        summoner_contract = Contract("rarity-summoner")
-    except ValueError:
-        summoner_contract = Contract.from_explorer(
-            SUMMONER_CONTRACT_ADDRESS, owner=user
-        )
-        summoner_contract.set_alias("rarity-summoner")
-    finally:
-        print("• Rarity Summoner")
-
-    # Attempt to load the saved rarity gold contract. If not found, fetch from FTM network explorer
-    try:
-        gold_contract = Contract("rarity-gold")
-    except ValueError:
-        gold_contract = Contract.from_explorer(GOLD_CONTRACT_ADDRESS, owner=user)
-        gold_contract.set_alias("rarity-gold")
-    finally:
-        print("• Rarity Gold")
+    gold_contract = load_contract(GOLD_CONTRACT_ADDRESS, "Rarity Gold", user)
+    summoner_contract = load_contract(
+        SUMMONER_CONTRACT_ADDRESS, "Rarity Summoner", user
+    )
+    cellar_contract = load_contract(CELLAR_CONTRACT_ADDRESS, "Rarity Cellar", user)
 
     if get_summoners(summoners):
         pass
@@ -88,7 +75,7 @@ def main():
         )
 
     # Fill the dictionary with on-chain data
-    print("Summoners found:")
+    print("\nSummoners found:")
     for id in summoners.keys():
         summoners[id] = get_summoner_info(summoner_contract, id)
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
@@ -206,6 +193,18 @@ def level_up(contract, id, user):
         except ValueError:
             # tx will fail as gas price fluctuates, so passing will loop until success
             pass
+
+
+def load_contract(address, alias, user):
+    # Attempt to load the saved contract. If not found, fetch from FTM network explorer
+    try:
+        contract = Contract(alias)
+    except ValueError:
+        contract = Contract.from_explorer(address, owner=user)
+        contract.set_alias(alias)
+    finally:
+        print(f"• {alias}")
+        return contract
 
 
 if __name__ == "__main__":
