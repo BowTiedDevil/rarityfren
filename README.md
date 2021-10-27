@@ -14,4 +14,5 @@ Run `python3 adventure.py`, unlock brownie account data using password, watch yo
 
 ## TO-DO
 - Improve README
-- Refactor, too many functions in adventure.py
+- Add try/except error handling for all contract calls
+- Refactor functions, adventure.py is getting too big

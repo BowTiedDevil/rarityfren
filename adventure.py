@@ -66,6 +66,8 @@ def main():
             SUMMONER_CONTRACT_ADDRESS, owner=user
         )
         summoner_contract.set_alias("rarity-summoner")
+    finally:
+        print("Contract loaded: Rarity Summoner")
 
     # Attempt to load the saved rarity gold contract. If not found, fetch from FTM network explorer
     try:
@@ -73,6 +75,8 @@ def main():
     except ValueError:
         gold_contract = Contract.from_explorer(GOLD_CONTRACT_ADDRESS, owner=user)
         gold_contract.set_alias("rarity-gold")
+    finally:
+        print("Contract loaded: Rarity Gold")
 
     if get_summoners(summoners):
         pass
@@ -82,13 +86,14 @@ def main():
         )
 
     # Fill the dictionary with on-chain data
+    print("Summoners found!")
     for id in summoners.keys():
         summoners[id] = get_summoner_info(summoner_contract, id)
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
             summoner_contract, summoners[id]["Level"]
         )
         print(
-            f'• Found Summoner #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
+            f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the babysitting loop
@@ -103,12 +108,7 @@ def main():
             # Only adventure when ready
             if loop_timer > summoners[id]["Log"]:
                 print(f"[Adventure] Sending Summoner {id} on adventure")
-                try:
-                    adventure(summoner_contract, id, user)
-                except ValueError:
-                    print("Failed! Retrying on next loop")
-                    break
-
+                adventure(summoner_contract, id, user)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
@@ -126,21 +126,20 @@ def main():
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
-                print(f"[ClaimGold] Claiming gold for Summoner {id}")
-                claim_gold(gold_contract, id, user)
+                if claim_gold(gold_contract, id, user):
+                    print(f"[ClaimGold] Claiming gold for Summoner {id}")
 
-        # Repeat loop every 10 seconds
-        time.sleep(10)
+        # Repeat loop every second
+        time.sleep(1)
 
 
 def claim_gold(contract, id, user):
-    try:
-        contract.claim(id, {"from": user})
-        print(f"Gold claimed for summoner #{id}")
-        return True
-    except ValueError:
-        print("Error")
-        return False
+    while True:
+        try:
+            contract.claim(id, {"from": user})
+            break
+        except ValueError:
+            print("Error")
 
 
 def get_summoners(summoners):
@@ -162,13 +161,15 @@ def get_summoners(summoners):
 def get_summoner_info(contract, id):
     # Sometimes the contract call to the 'summoner' method will return all zeros, so loop until it returns real results
     while True:
-        tx = contract.summoner(id)
+        tx = contract.summoner.call(id)
         if tx[3]:
             return {
                 "XP": int(tx[0] / DECIMALS),
                 "Log": tx[1],
                 "ClassNumber": tx[2],
-                "ClassName": CLASSES[tx[2]],
+                "ClassName": CLASSES[
+                    tx[2]
+                ],  # translates ClassNumber to ClassName using CLASSES dictionary
                 "Level": tx[3],
             }
         else:
@@ -178,14 +179,20 @@ def get_summoner_info(contract, id):
 def get_summoner_next_level_xp(contract, level):
     # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
     while True:
-        if tx := contract.xp_required(level):
+        if tx := contract.xp_required.call(level):
             return int(tx / DECIMALS)
         else:
             time.sleep(5)
 
 
 def adventure(contract, id, user):
-    contract.adventure(id, {"from": user})
+    while True:
+        try:
+            contract.adventure(id, {"from": user})
+            break
+        except ValueError:
+            # tx will fail as gas price fluctuates, so passing will loop until success
+            pass
 
 
 def level_up(contract, id, user):
