@@ -139,7 +139,8 @@ def claim_gold(contract, id, user):
             contract.claim(id, {"from": user})
             break
         except ValueError:
-            print("Error")
+            # tx will fail as gas price fluctuates, so passing will loop until success
+            pass
 
 
 def get_summoners(summoners):
@@ -179,10 +180,12 @@ def get_summoner_info(contract, id):
 def get_summoner_next_level_xp(contract, level):
     # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
     while True:
-        if tx := contract.xp_required.call(level):
+        try:
+            tx = contract.xp_required.call(level)
             return int(tx / DECIMALS)
-        else:
-            time.sleep(5)
+        except ValueError:
+            # tx will fail as gas price fluctuates, so passing will loop until success
+            pass
 
 
 def adventure(contract, id, user):
@@ -196,11 +199,13 @@ def adventure(contract, id, user):
 
 
 def level_up(contract, id, user):
-    if tx := contract.level_up(id, {"from": user}):
-        print(f'New Level: {tx.events["leveled"]["level"]}')
-        return tx.events["leveled"]["level"]
-    else:
-        return 0
+    while True:
+        try:
+            contract.level_up(id, {"from": user})
+            break
+        except ValueError:
+            # tx will fail as gas price fluctuates, so passing will loop until success
+            pass
 
 
 if __name__ == "__main__":
