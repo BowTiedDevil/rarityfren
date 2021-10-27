@@ -3,7 +3,6 @@ import json
 import pprint
 import time
 import requests
-import math
 from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
@@ -96,12 +95,13 @@ def main():
         "\nEntering babysitting loop. Adventure, LevelUp, and ClaimGold messages will appear below when triggered."
     )
     while True:
-        loop_timer = math.ceil(time.time())
+        loop_timer = time.time()
 
         for id in summoners.keys():
-            # Only adventure when ready
+
+            # Adventure when ready
             if loop_timer > summoners[id]["Log"]:
-                print(f"[Adventure] Sending Summoner {id} on adventure")
+                print(f"[Adventure] Summoner #{id}")
                 adventure(summoner_contract, id, user)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
@@ -111,17 +111,17 @@ def main():
 
             # Level up if XP is sufficient
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                print(f"[LevelUp] Summoner {id}")
+                print(f"[LevelUp] Summoner #{id}")
                 level_up(summoner_contract, id, user)
 
-                # refresh summoner info
+                # Refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
 
-                # claim gold
-                print(f"[ClaimGold] Claiming gold for Summoner {id}")
+                # Claim gold after successful level_up
+                print(f"[ClaimGold] Summoner #{id}")
                 claim_gold(gold_contract, id, user)
 
         # Repeat loop every second
@@ -134,7 +134,7 @@ def claim_gold(contract, id, user):
             contract.claim(id, {"from": user})
             break
         except ValueError:
-            # tx will fail as gas price fluctuates, so passing will loop until success
+            # tx call might fail, so passing will continue the loop until success
             pass
 
 
@@ -165,7 +165,7 @@ def get_summoner_info(contract, id):
                 "ClassNumber": tx[2],
                 "ClassName": CLASSES[
                     tx[2]
-                ],  # translates ClassNumber to ClassName using CLASSES dictionary
+                ],  # translates to ClassName using CLASSES dictionary
                 "Level": tx[3],
             }
         else:
@@ -187,7 +187,7 @@ def adventure(contract, id, user):
             contract.adventure(id, {"from": user})
             break
         except ValueError:
-            # tx will fail as gas price fluctuates, so passing will loop until success
+            # tx call might fail, so passing will continue the loop until success
             pass
 
 
@@ -197,7 +197,7 @@ def level_up(contract, id, user):
             contract.level_up(id, {"from": user})
             break
         except ValueError:
-            # tx will fail as gas price fluctuates, so passing will loop until success
+            # tx call might fail, so passing will continue the loop until success
             pass
 
 
