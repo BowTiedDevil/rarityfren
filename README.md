@@ -19,3 +19,7 @@ Run `python3 adventure.py`, unlock brownie account data using password, watch yo
 - Add more contracts for feats, skills, dungeons, etc.
 - Add try/except error handling for all contract calls
 - Refactor functions, adventure.py is getting too big
+- Add expansion contracts
+- Automate crafting
+- Automate dungeons
+- Automate skills

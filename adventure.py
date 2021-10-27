@@ -14,6 +14,8 @@ FTMSCAN_API_KEY = "8C6RD312AG41JTZK1DK1D4538B6WBJFZBN"
 SUMMONER_CONTRACT_ADDRESS = "0xce761D788DF608BD21bdd59d6f4B54b2e27F25Bb"
 GOLD_CONTRACT_ADDRESS = "0x2069B76Afe6b734Fb65D1d099E7ec64ee9CC76B2"
 CELLAR_CONTRACT_ADDRESS = "0x2A0F1cB17680161cF255348dDFDeE94ea8Ca196A"
+CRAFTING_CONTRACT_ADDRESS = "0xf41270836dF4Db1D28F7fd0935270e3A603e78cC"
+SKILLS_CONTRACT_ADDRESS = "0x6292f3fB422e393342f257857e744d43b1Ae7e70"
 
 FTMSCAN_API_PARAMS = {
     "module": "account",
@@ -61,11 +63,15 @@ def main():
 
     print("\nContracts loaded:")
 
-    gold_contract = load_contract(GOLD_CONTRACT_ADDRESS, "Rarity Gold", user)
+    gold_contract = load_contract(GOLD_CONTRACT_ADDRESS, "Rarity: Gold", user)
     summoner_contract = load_contract(
-        SUMMONER_CONTRACT_ADDRESS, "Rarity Summoner", user
+        SUMMONER_CONTRACT_ADDRESS, "Rarity: Summoner", user
     )
-    cellar_contract = load_contract(CELLAR_CONTRACT_ADDRESS, "Rarity Cellar", user)
+    cellar_contract = load_contract(CELLAR_CONTRACT_ADDRESS, "Rarity: Cellar", user)
+    crafting_contract = load_contract(
+        CRAFTING_CONTRACT_ADDRESS, "Rarity: Crafting", user
+    )
+    skills_contract = load_contract(SKILLS_CONTRACT_ADDRESS, "Rarity: Skills", user)
 
     if get_summoners(summoners):
         pass
