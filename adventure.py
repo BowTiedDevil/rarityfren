@@ -3,7 +3,7 @@ import json
 import pprint
 import time
 import requests
-import math
+import os
 from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
@@ -17,6 +17,9 @@ CELLAR_CONTRACT_ADDRESS = "0x2A0F1cB17680161cF255348dDFDeE94ea8Ca196A"
 CRAFTING_CONTRACT_ADDRESS = "0xf41270836dF4Db1D28F7fd0935270e3A603e78cC"
 SKILLS_CONTRACT_ADDRESS = "0x6292f3fB422e393342f257857e744d43b1Ae7e70"
 ATTRIBUTES_CONTRACT_ADDRESS = "0xB5F5AF1087A8DA62A23b08C00C6ec9af21F397a1"
+
+os.environ["FTMSCAN_TOKEN"] = FTMSCAN_API_KEY
+
 
 FTMSCAN_API_PARAMS = {
     "module": "account",
@@ -41,6 +44,7 @@ CLASSES = {
     11: "Wizard",
 }
 
+DAY = 24 * 60 * 60  # 1 day in seconds
 DECIMALS = 10 ** 18
 
 
@@ -104,7 +108,7 @@ def main():
 
             # Adventure when ready
             if time.time() > summoners[id]["Adventure Log"]:
-                print(f"[Adventure] Summoner #{id}")
+                print(f"[Adventure] {id}")
                 adventure(summoner_contract, id, user)
                 # refresh summoner info
                 summoners[id] = get_summoner_info(summoner_contract, id)
@@ -114,36 +118,37 @@ def main():
 
             # Level up if XP is sufficient
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                print(f"[LevelUp] Summoner #{id}")
+                print(f"[LevelUp] {id}")
                 level_up(summoner_contract, id, user)
 
                 # Refresh summoner info
-                print(f"[Refresh] Summoner #{id}")
+                print(f"[Refresh] {id}")
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
                 )
 
                 # Claim gold after successful level_up
-                print(f"[ClaimGold] Summoner #{id}")
+                print(f"[ClaimGold] {id}")
                 claim_gold(gold_contract, id, user)
 
             # Scout the Cellar dungeon and adventure if ready
-            # print(summoners.get(id)["Cellar Log"])
-            # if time.time() > summoners.get(id)["Cellar Log"]:
-            #     if cellar_contract.scout.call(id):
-            #         print(f"[Dungeon-Cellar] Summoner #{id}")
-            #         print("simulating adventure...")
-            #         pprint.pprint(summoners[id]["Cellar Log"])
-            #         # adventure(cellar_contract, id, user)
-            #         # update adventurer log for this dungeon
-            #         print(f"[Refresh] Summoner #{id}")
-            #         summoners[id]["Cellar Log"] = get_adventure_log(
-            #             cellar_contract, id, user
-            #         )
+            if time.time() > summoners[id]["Cellar Log"]:
+                # only adventure if we expect a reward
+                if cellar_contract.scout.call(id) != 0:
+                    print(f"[Cellar] {id}")
+                    adventure(cellar_contract, id, user)
+                    # update adventurer log for this dungeon
+                    print(f"[Refresh] Summoner #{id}")
+                    summoners[id]["Cellar Log"] = get_adventure_log(
+                        cellar_contract, id, user
+                    )
+                # otherwise we reset the log manually and try again in 24 hours
+                else:
+                    summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Repeat loop
-        time.sleep(5)
+        time.sleep(1)
 
 
 def claim_gold(contract, id, user):
@@ -221,9 +226,7 @@ def level_up(contract, id, user):
 def get_adventure_log(contract, id, user):
     while True:
         try:
-            # adventurers_log() returns 0 if we have never interacted with this contract. If that's true, override it to "now" so timer checks work correctly
-            result = contract.adventurers_log.call(id, {"from": user})
-            return result
+            return contract.adventurers_log.call(id, {"from": user})
         except ValueError:
             # call might fail, so passing will continue the loop until success
             pass
