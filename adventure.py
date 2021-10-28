@@ -90,15 +90,15 @@ def main():
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
             summoner_contract, summoners[id]["Level"]
         )
-        summoners[id]["Dungeon Log"] = get_adventure_log(cellar_contract, id, user)
+        summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
+            cellar_contract, id, user
+        )
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the babysitting loop
-    print(
-        "\nEntering babysitting loop. Look for the following triggered events: [Adventure], [LevelUp], [Dungeon], [ClaimGold]"
-    )
+    print("\nEntering babysitting loop. Triggered events will appear below:")
     while True:
         loop_timer = time.time()
 
@@ -130,13 +130,13 @@ def main():
                 claim_gold(gold_contract, id, user)
 
             # Scout the Cellar dungeon and adventure if ready
-            if loop_timer > summoners[id]["Dungeon Log"]:
+            if loop_timer > summoners[id]["Cellar Dungeon Log"]:
                 if cellar_contract.scout.call(id):
                     print(f"[Dungeon-Cellar] Summoner #{id}")
-                    # dungeon uses the same method name from summoner contract (adventure)
-                    print(f"simulating dungeon mission for summoner {id}")
-                    # adventure(cellar_contract, id, user)
-                    summoners[id]["Dungeon Log"] = get_adventure_log(
+                    print(f"\n *** Simulated dungeon mission for summoner {id} *** \n")
+                    # adventure(cellar_contract, id, user)  # disable real call for more testing
+                    # update adventurer log for this dungeon
+                    summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
                         cellar_contract, id, user
                     )
 
