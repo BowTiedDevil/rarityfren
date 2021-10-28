@@ -105,7 +105,7 @@ def main():
         for id in summoners.keys():
 
             # Adventure when ready
-            if loop_timer > summoners[id]["Log"]:
+            if loop_timer > summoners[id]["Adventure Log"]:
                 print(f"[Adventure] Summoner #{id}")
                 adventure(summoner_contract, id, user)
                 # refresh summoner info
@@ -177,7 +177,7 @@ def get_summoner_info(contract, id):
         if tx[3]:
             return {
                 "XP": int(tx[0] / DECIMALS),
-                "Log": tx[1],
+                "Adventure Log": tx[1],
                 "ClassNumber": tx[2],
                 "ClassName": CLASSES[
                     tx[2]
