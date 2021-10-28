@@ -3,6 +3,7 @@ import json
 import pprint
 import time
 import requests
+import math
 from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
@@ -25,7 +26,7 @@ FTMSCAN_API_PARAMS = {
     "apikey": FTMSCAN_API_KEY,
 }
 
-# Classes Number/Name dictionary
+# Class Number to Name translation
 CLASSES = {
     1: "Barbarian",
     2: "Bard",
@@ -90,9 +91,7 @@ def main():
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
             summoner_contract, summoners[id]["Level"]
         )
-        summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
-            cellar_contract, id, user
-        )
+        summoners[id]["Cellar Log"] = get_adventure_log(cellar_contract, id, user)
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP.'
         )
@@ -130,15 +129,18 @@ def main():
                 claim_gold(gold_contract, id, user)
 
             # Scout the Cellar dungeon and adventure if ready
-            if time.time() > summoners[id]["Cellar Dungeon Log"]:
-                if cellar_contract.scout.call(id):
-                    print(f"[Dungeon-Cellar] Summoner #{id}")
-                    adventure(cellar_contract, id, user)
-                    # update adventurer log for this dungeon
-                    print(f"[Refresh] Summoner #{id}")
-                    summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
-                        cellar_contract, id, user
-                    )
+            # print(summoners.get(id)["Cellar Log"])
+            # if time.time() > summoners.get(id)["Cellar Log"]:
+            #     if cellar_contract.scout.call(id):
+            #         print(f"[Dungeon-Cellar] Summoner #{id}")
+            #         print("simulating adventure...")
+            #         pprint.pprint(summoners[id]["Cellar Log"])
+            #         # adventure(cellar_contract, id, user)
+            #         # update adventurer log for this dungeon
+            #         print(f"[Refresh] Summoner #{id}")
+            #         summoners[id]["Cellar Log"] = get_adventure_log(
+            #             cellar_contract, id, user
+            #         )
 
         # Repeat loop
         time.sleep(5)
