@@ -15,6 +15,7 @@ GOLD_CONTRACT_ADDRESS = "0x2069B76Afe6b734Fb65D1d099E7ec64ee9CC76B2"
 CELLAR_CONTRACT_ADDRESS = "0x2A0F1cB17680161cF255348dDFDeE94ea8Ca196A"
 CRAFTING_CONTRACT_ADDRESS = "0xf41270836dF4Db1D28F7fd0935270e3A603e78cC"
 SKILLS_CONTRACT_ADDRESS = "0x6292f3fB422e393342f257857e744d43b1Ae7e70"
+ATTRIBUTES_CONTRACT_ADDRESS = "0xB5F5AF1087A8DA62A23b08C00C6ec9af21F397a1"
 
 FTMSCAN_API_PARAMS = {
     "module": "account",
@@ -71,6 +72,9 @@ def main():
         CRAFTING_CONTRACT_ADDRESS, "Rarity: Crafting", user
     )
     skills_contract = load_contract(SKILLS_CONTRACT_ADDRESS, "Rarity: Skills", user)
+    attributes_contract = load_contract(
+        ATTRIBUTES_CONTRACT_ADDRESS, "Rarity: Attributes", user
+    )
 
     if get_summoners(summoners):
         pass
@@ -86,13 +90,14 @@ def main():
         summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
             summoner_contract, summoners[id]["Level"]
         )
+        summoners[id]["Dungeon Log"] = get_adventure_log(cellar_contract, id, user)
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the babysitting loop
     print(
-        "\nEntering babysitting loop. Adventure, LevelUp, and ClaimGold messages will appear below when triggered."
+        "\nEntering babysitting loop. Look for the following triggered events: [Adventure], [LevelUp], [Dungeon], [ClaimGold]"
     )
     while True:
         loop_timer = time.time()
@@ -123,6 +128,17 @@ def main():
                 # Claim gold after successful level_up
                 print(f"[ClaimGold] Summoner #{id}")
                 claim_gold(gold_contract, id, user)
+
+            # Scout the Cellar dungeon and adventure if ready
+            if loop_timer > summoners[id]["Dungeon Log"]:
+                if cellar_contract.scout.call(id):
+                    print(f"[Dungeon-Cellar] Summoner #{id}")
+                    # dungeon uses the same method name from summoner contract (adventure)
+                    print(f"simulating dungeon mission for summoner {id}")
+                    # adventure(cellar_contract, id, user)
+                    summoners[id]["Dungeon Log"] = get_adventure_log(
+                        cellar_contract, id, user
+                    )
 
         # Repeat loop every second
         time.sleep(1)
@@ -187,7 +203,7 @@ def adventure(contract, id, user):
             contract.adventure(id, {"from": user})
             break
         except ValueError:
-            # tx call might fail, so passing will continue the loop until success
+            # tx might fail, so passing will continue the loop until success
             pass
 
 
@@ -197,7 +213,16 @@ def level_up(contract, id, user):
             contract.level_up(id, {"from": user})
             break
         except ValueError:
-            # tx call might fail, so passing will continue the loop until success
+            # tx might fail, so passing will continue the loop until success
+            pass
+
+
+def get_adventure_log(contract, id, user):
+    while True:
+        try:
+            return contract.adventurers_log.call(id, {"from": user})
+        except ValueError:
+            # call might fail, so passing will continue the loop until success
             pass
 
 
