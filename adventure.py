@@ -119,6 +119,7 @@ def main():
                 level_up(summoner_contract, id, user)
 
                 # Refresh summoner info
+                print(f"[Refresh] Summoner #{id}")
                 summoners[id] = get_summoner_info(summoner_contract, id)
                 summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
                     summoner_contract, summoners[id]["Level"]
@@ -129,18 +130,18 @@ def main():
                 claim_gold(gold_contract, id, user)
 
             # Scout the Cellar dungeon and adventure if ready
-            if time.time() > summoners[id][
-                "Cellar Dungeon Log"
-            ] and cellar_contract.scout.call(id):
-                print(f"[Dungeon-Cellar] Summoner #{id}")
-                adventure(cellar_contract, id, user)
-                # update adventurer log for this dungeon
-                summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
-                    cellar_contract, id, user
-                )
+            if time.time() > summoners[id]["Cellar Dungeon Log"]:
+                if cellar_contract.scout.call(id):
+                    print(f"[Dungeon-Cellar] Summoner #{id}")
+                    adventure(cellar_contract, id, user)
+                    # update adventurer log for this dungeon
+                    print(f"[Refresh] Summoner #{id}")
+                    summoners[id]["Cellar Dungeon Log"] = get_adventure_log(
+                        cellar_contract, id, user
+                    )
 
-        # Repeat loop every second
-        time.sleep(1)
+        # Repeat loop
+        time.sleep(5)
 
 
 def claim_gold(contract, id, user):
@@ -177,7 +178,6 @@ def get_summoner_info(contract, id):
             return {
                 "XP": int(tx[0] / DECIMALS),
                 "Adventure Log": tx[1],
-                "ClassNumber": tx[2],
                 "ClassName": CLASSES[
                     tx[2]
                 ],  # translates to ClassName using CLASSES dictionary
@@ -221,14 +221,10 @@ def get_adventure_log(contract, id, user):
         try:
             # adventurers_log() returns 0 if we have never interacted with this contract. If that's true, override it to "now" so timer checks work correctly
             result = contract.adventurers_log.call(id, {"from": user})
+            return result
         except ValueError:
             # call might fail, so passing will continue the loop until success
             pass
-        finally:
-            if result == 0:
-                return int(time.time())
-            else:
-                return result
 
 
 def load_contract(address, alias, user):

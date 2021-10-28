@@ -1,5 +1,8 @@
 # rarityfren
 
+## DISCLAIMER
+This Python script will spend FTM from your wallet in an automatic way. The script may have bugs and spend all of your FTM! I **highly** recommend setting up a dedicated wallet for this and keeping a low FTM balance in there (sufficient for adventuring but not your life savings)
+
 ## Package prerequisites
 * Python 3
 * Python Packages (installed with `pip install [packagename]`)
