@@ -96,6 +96,10 @@ def main():
             summoner_contract, summoners[id]["Level"]
         )
         summoners[id]["Cellar Log"] = get_adventure_log(cellar_contract, id, user)
+
+        if summoners[id]["Cellar Log"] == 0:
+            summoners[id]["Cellar Log"] = time.time()
+
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP.'
         )
@@ -132,20 +136,21 @@ def main():
                 print(f"[ClaimGold] {id}")
                 claim_gold(gold_contract, id, user)
 
+            # print(summoners[id]["Cellar Log"])
             # Scout the Cellar dungeon and adventure if ready
-            if time.time() > summoners[id]["Cellar Log"]:
-                # only adventure if we expect a reward
-                if cellar_contract.scout.call(id) != 0:
-                    print(f"[Cellar] {id}")
-                    adventure(cellar_contract, id, user)
-                    # update adventurer log for this dungeon
-                    print(f"[Refresh] Summoner #{id}")
-                    summoners[id]["Cellar Log"] = get_adventure_log(
-                        cellar_contract, id, user
-                    )
-                # otherwise we reset the log manually and try again in 24 hours
-                else:
-                    summoners[id]["Cellar Log"] = time.time() + DAY
+            # if time.time() > summoners[id]["Cellar Log"]:
+            #     # only adventure if we expect a reward
+            #     if cellar_contract.scout.call(id) != 0:
+            #         print(f"[Cellar] {id}")
+            #         adventure(cellar_contract, id, user)
+            #         # update adventurer log for this dungeon
+            #         print(f"[Refresh] Summoner #{id}")
+            #         summoners[id]["Cellar Log"] = get_adventure_log(
+            #             cellar_contract, id, user
+            #         )
+            #     # otherwise we reset the log manually and try again in 24 hours
+            #     else:
+            #         summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Repeat loop
         time.sleep(1)
