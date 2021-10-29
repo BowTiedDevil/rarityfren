@@ -91,15 +91,11 @@ def main():
     # Fill the dictionary with on-chain data
     print("\nSummoners found:")
     for id in summoners.keys():
-        summoners[id] = get_summoner_info(summoner_contract, id)
-        summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-            summoner_contract, summoners[id]["Level"]
+        summoners[id].update(get_summoner_info(summoner_contract, id))
+        summoners[id].update(
+            get_summoner_next_level_xp(summoner_contract, summoners[id]["Level"])
         )
-        summoners[id]["Cellar Log"] = get_adventure_log(cellar_contract, id, user)
-
-        if summoners[id]["Cellar Log"] == 0:
-            summoners[id]["Cellar Log"] = time.time()
-
+        summoners[id].update(get_cellar_log(cellar_contract, id, user))
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP.'
         )
@@ -115,9 +111,11 @@ def main():
                 print(f"[Adventure] {id}")
                 adventure(summoner_contract, id, user)
                 # refresh summoner info
-                summoners[id] = get_summoner_info(summoner_contract, id)
-                summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-                    summoner_contract, summoners[id]["Level"]
+                summoners[id].update(get_summoner_info(summoner_contract, id))
+                summoners[id].update(
+                    get_summoner_next_level_xp(
+                        summoner_contract, summoners[id]["Level"]
+                    )
                 )
 
             # Level up if XP is sufficient
@@ -127,30 +125,29 @@ def main():
 
                 # Refresh summoner info
                 print(f"[Refresh] {id}")
-                summoners[id] = get_summoner_info(summoner_contract, id)
-                summoners[id]["XP_LevelUp"] = get_summoner_next_level_xp(
-                    summoner_contract, summoners[id]["Level"]
+                summoners[id].update(get_summoner_info(summoner_contract, id))
+                summoners[id].update(
+                    get_summoner_next_level_xp(
+                        summoner_contract, summoners[id]["Level"]
+                    )
                 )
 
                 # Claim gold after successful level_up
                 print(f"[ClaimGold] {id}")
                 claim_gold(gold_contract, id, user)
 
-            # print(summoners[id]["Cellar Log"])
-            # Scout the Cellar dungeon and adventure if ready
-            # if time.time() > summoners[id]["Cellar Log"]:
-            #     # only adventure if we expect a reward
-            #     if cellar_contract.scout.call(id) != 0:
-            #         print(f"[Cellar] {id}")
-            #         adventure(cellar_contract, id, user)
-            #         # update adventurer log for this dungeon
-            #         print(f"[Refresh] Summoner #{id}")
-            #         summoners[id]["Cellar Log"] = get_adventure_log(
-            #             cellar_contract, id, user
-            #         )
-            #     # otherwise we reset the log manually and try again in 24 hours
-            #     else:
-            #         summoners[id]["Cellar Log"] = time.time() + DAY
+            # Scout the Cellar dungeon
+            if time.time() > summoners[id]["Cellar Log"]:
+                # Adventure if we expect a reward
+                if cellar_contract.scout.call(id):
+                    print(f"[Cellar] {id}")
+                    adventure(cellar_contract, id, user)
+                    # Update adventurer log for this dungeon
+                    print(f"[Refresh] Summoner #{id}")
+                    summoners[id].update(get_adventure_log(cellar_contract, id, user))
+                # otherwise we reset the log manually and try again in 24 hours (otherwise this executes on every loop)
+                else:
+                    summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Repeat loop
         time.sleep(1)
@@ -203,7 +200,7 @@ def get_summoner_next_level_xp(contract, level):
     # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
     while True:
         if tx := contract.xp_required.call(level):
-            return int(tx / DECIMALS)
+            return {"XP_LevelUp": int(tx / DECIMALS)}
         else:
             pass
 
@@ -231,7 +228,18 @@ def level_up(contract, id, user):
 def get_adventure_log(contract, id, user):
     while True:
         try:
-            return contract.adventurers_log.call(id, {"from": user})
+            tx = contract.adventurers_log.call(id, {"from": user})
+            return {"Adventure Log": tx}
+        except ValueError:
+            # call might fail, so passing will continue the loop until success
+            pass
+
+
+def get_cellar_log(contract, id, user):
+    while True:
+        try:
+            tx = contract.adventurers_log.call(id, {"from": user})
+            return {"Cellar Log": tx}
         except ValueError:
             # call might fail, so passing will continue the loop until success
             pass
