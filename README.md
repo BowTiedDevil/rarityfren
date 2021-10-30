@@ -31,6 +31,7 @@ RarityFren interacts with the smart contracts published on Fantom directly, and 
 Run `python3 adventure.py`, unlock brownie account data using password, watch your summoners go on their adventures
 
 ## TO-DO
+- Investigate multi-call to batch similar transactions. Possible gas savings?
 - Load address and API keys from env instead of hard-coding
 - Refactor functions, adventure.py is getting too big
 - Add expansion contracts
