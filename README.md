@@ -1,9 +1,20 @@
 # rarityfren
 
-## DISCLAIMER
+## DISCLAIMER!
 This Python script will spend FTM from your wallet in an automatic way. The script may have bugs and spend all of your FTM! I **highly** recommend setting up a dedicated wallet for this and keeping a low FTM balance in there (sufficient for adventuring but not your life savings)
 
-## Package prerequisites
+---
+
+## Features
+RarityFren automates many tedious tasks associated with playing [Rarity](https://andrecronje.medium.com/loot-rarity-d341faa4485c) by Andre Cronje. Including:
+- Adventuring once a day
+- Leveling Up
+- Claiming Gold
+- Scouting and completing the entry-level [Cellar Dungeon](https://andrecronje.medium.com/rarity-the-cellar-83a1606a0be3)
+
+RarityFren interacts with the smart contracts published on Fantom directly, and does not interact with any outside "helper" contracts. You maintain control of your keys the whole time, thus it is non-custodial.
+
+## Prerequisites
 * Python 3
 * Python Packages (installed with `pip install [packagename]`)
     - requests

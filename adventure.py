@@ -1,9 +1,8 @@
 import sys
-import json
-import pprint
 import time
 import requests
 import os
+import json
 from brownie import *
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
@@ -19,7 +18,6 @@ SKILLS_CONTRACT_ADDRESS = "0x6292f3fB422e393342f257857e744d43b1Ae7e70"
 ATTRIBUTES_CONTRACT_ADDRESS = "0xB5F5AF1087A8DA62A23b08C00C6ec9af21F397a1"
 
 os.environ["FTMSCAN_TOKEN"] = FTMSCAN_API_KEY
-
 
 FTMSCAN_API_PARAMS = {
     "module": "account",
@@ -44,8 +42,12 @@ CLASSES = {
     11: "Wizard",
 }
 
-DAY = 24 * 60 * 60  # 1 day in seconds
+# Stored numbers on Ethereum-compatible blockchains are integers.
+# The default type is padded to 18 decimal place accuracy (floats not used).
+# Some on-contract results need to be divided and rounded off to be usable.
 DECIMALS = 10 ** 18
+
+DAY = 24 * 60 * 60  # 1 day in seconds
 
 
 def main():
@@ -97,7 +99,7 @@ def main():
         )
         summoners[id].update(get_cellar_log(cellar_contract, id, user))
         print(
-            f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP.'
+            f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
     # Start the babysitting loop
@@ -108,7 +110,7 @@ def main():
 
             # Adventure when ready
             if time.time() > summoners[id]["Adventure Log"]:
-                print(f"[Adventure] {id}")
+                print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
                 adventure(summoner_contract, id, user)
                 # Refresh summoner info
                 summoners[id].update(get_summoner_info(summoner_contract, id))
@@ -120,7 +122,7 @@ def main():
 
             # Level up if XP is sufficient
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                print(f"[LevelUp] {id}")
+                print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
                 level_up(summoner_contract, id, user)
 
                 # Refresh summoner info
@@ -132,21 +134,21 @@ def main():
                 )
 
                 # Claim gold after successful level_up
-                print(f"[ClaimGold] {id}")
+                print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
                 claim_gold(gold_contract, id, user)
 
             # Scout the Cellar dungeon
             if time.time() > summoners[id]["Cellar Log"]:
                 # Adventure if the dungeon will yield a reward
                 if cellar_contract.scout.call(id):
-                    print(f"[Cellar] {id}")
+                    print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
                     adventure(cellar_contract, id, user)
                     summoners[id].update(get_cellar_log(cellar_contract, id, user))
                 # Otherwise we reset the log manually and try again in 24 hours (prevents excessive calls on every loop)
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
 
-        # Repeat loop
+        # Sleep before repeating loop
         time.sleep(10)
 
 
@@ -177,9 +179,8 @@ def get_summoners(summoners):
 
 
 def get_summoner_info(contract, id):
-    # Sometimes the contract call to the 'summoner' method will return all zeros, so loop until it returns real results
     while True:
-        tx = contract.summoner.call(id)
+        tx = contract.summoner.call(id)  # returns tuple (XP, Log, ClassNumber, Level)
         if tx[3]:
             return {
                 "XP": int(tx[0] / DECIMALS),
@@ -190,16 +191,15 @@ def get_summoner_info(contract, id):
                 "Level": tx[3],
             }
         else:
-            time.sleep(5)
+            pass
 
 
 def get_summoner_next_level_xp(contract, level):
-    # Sometimes the contract call to the 'xp_required' method will return a zero, so loop until it returns real results
     while True:
         if tx := contract.xp_required.call(level):
             return {"XP_LevelUp": int(tx / DECIMALS)}
         else:
-            pass
+            pass  # tx might fail, so passing will continue the loop until success
 
 
 def adventure(contract, id, user):
@@ -208,8 +208,7 @@ def adventure(contract, id, user):
             contract.adventure(id, {"from": user})
             break
         except ValueError:
-            # tx might fail, so passing will continue the loop until success
-            pass
+            pass  # tx might fail, so passing will continue the loop until success
 
 
 def level_up(contract, id, user):
@@ -218,8 +217,7 @@ def level_up(contract, id, user):
             contract.level_up(id, {"from": user})
             break
         except ValueError:
-            # tx might fail, so passing will continue the loop until success
-            pass
+            pass  # tx might fail, so passing will continue the loop until success
 
 
 def get_adventure_log(contract, id, user):
@@ -228,8 +226,7 @@ def get_adventure_log(contract, id, user):
             tx = contract.adventurers_log.call(id, {"from": user})
             return {"Adventure Log": tx}
         except ValueError:
-            # call might fail, so passing will continue the loop until success
-            pass
+            pass  # call might fail, so passing will continue the loop until success
 
 
 def get_cellar_log(contract, id, user):
@@ -238,12 +235,11 @@ def get_cellar_log(contract, id, user):
             tx = contract.adventurers_log.call(id, {"from": user})
             return {"Cellar Log": tx}
         except ValueError:
-            # call might fail, so passing will continue the loop until success
-            pass
+            pass  # call might fail, so passing will continue the loop until success
 
 
 def load_contract(address, alias, user):
-    # Attempt to load the saved contract. If not found, fetch from FTM network explorer
+    # Attempts to load the saved contract. If not found, fetch from FTM network explorer
     try:
         contract = Contract(alias)
     except ValueError:
@@ -254,5 +250,6 @@ def load_contract(address, alias, user):
         return contract
 
 
+# Only executes main loop if this file is called directly
 if __name__ == "__main__":
     main()
