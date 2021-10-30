@@ -22,6 +22,7 @@ RarityFren interacts with the smart contracts published on Fantom directly, and 
 
 ## Brownie Setup
 - Create a dedicated account on the console using `brownie accounts new`, enter the private key from your Metamask wallet (or similar). Edit the `ADDRESS_USER` value in `adventure.py` to match the public address.
+- Create a [FTMScan API Key](https://ftmscan.com/myapikey) and save it to the `FTMSCAN_API_KEY` variable. 
 - Create a dedicated network for interacting with the Fantom blockchain by entering the following:
 `brownie networks add "Fantom" fantom chainid=250 host=https://rpc.ftm.tools explorer=https://ftmscan.com/api`
 **Note** Brownie comes with a built-in Fantom network labeled "ftm-main", which is outdated and often returns bad data when queried.
@@ -31,9 +32,7 @@ Run `python3 adventure.py`, unlock brownie account data using password, watch yo
 
 ## TO-DO
 - Load address and API keys from env instead of hard-coding
-- Add try/except error handling for all contract calls
 - Refactor functions, adventure.py is getting too big
 - Add expansion contracts
-- Automate crafting
-- Automate dungeons
-- Automate skills
+- Explore automation of crafting, skills, and attribute increases
+- Add [Rarity Open Mic](https://rarity-openmic.com/) (Bard side quest)
