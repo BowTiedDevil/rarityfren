@@ -110,7 +110,7 @@ def main():
             if time.time() > summoners[id]["Adventure Log"]:
                 print(f"[Adventure] {id}")
                 adventure(summoner_contract, id, user)
-                # refresh summoner info
+                # Refresh summoner info
                 summoners[id].update(get_summoner_info(summoner_contract, id))
                 summoners[id].update(
                     get_summoner_next_level_xp(
@@ -124,7 +124,6 @@ def main():
                 level_up(summoner_contract, id, user)
 
                 # Refresh summoner info
-                print(f"[Refresh] {id}")
                 summoners[id].update(get_summoner_info(summoner_contract, id))
                 summoners[id].update(
                     get_summoner_next_level_xp(
@@ -138,19 +137,17 @@ def main():
 
             # Scout the Cellar dungeon
             if time.time() > summoners[id]["Cellar Log"]:
-                # Adventure if we expect a reward
+                # Adventure if the dungeon will yield a reward
                 if cellar_contract.scout.call(id):
                     print(f"[Cellar] {id}")
                     adventure(cellar_contract, id, user)
-                    # Update adventurer log for this dungeon
-                    print(f"[Refresh] Summoner #{id}")
-                    summoners[id].update(get_adventure_log(cellar_contract, id, user))
-                # otherwise we reset the log manually and try again in 24 hours (otherwise this executes on every loop)
+                    summoners[id].update(get_cellar_log(cellar_contract, id, user))
+                # Otherwise we reset the log manually and try again in 24 hours (prevents excessive calls on every loop)
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Repeat loop
-        time.sleep(1)
+        time.sleep(10)
 
 
 def claim_gold(contract, id, user):
