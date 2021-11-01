@@ -2,7 +2,6 @@ import sys
 import time
 import requests
 import os
-import pprint
 import json
 from brownie import *
 
