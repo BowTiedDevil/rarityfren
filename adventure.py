@@ -108,14 +108,11 @@ def main():
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
-    # We will adventure once a day at minimum, so we start here and count down to display upcoming events
-    next_event = DAY
+    loop_counter = 0
 
     # Start the babysitting loop
     print("\nEntering babysitting loop. Triggered events will appear below:")
     while True:
-
-        now = time.time()
 
         for id in summoners.keys():
 
@@ -147,19 +144,38 @@ def main():
                         summoners[id].update(result)
 
                 # Claim gold after successful level_up
-                print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
-                claim_gold(gold_contract, id, user)
+                if claim_gold(gold_contract, id, user):
+                    print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
 
             if time.time() > summoners[id]["Cellar Log"]:
-
-                # Scout the Cellar dungeon and adventure if it will yield a reward
+                # Scout the Cellar dungeon and adventure if it will yield a reward.
+                # Note some summoners may never be able to enter a dungeon, thus "Cellar Log"
+                # will always equal 0. We handle this by resetting it manually every 24 hours
+                # to prevent excessive looping
                 if cellar_contract.scout.call(id):
                     if adventure(cellar_contract, id, user):
                         print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
-                        summoners[id].update(get_cellar_log(cellar_contract, id, user))
-                # Otherwise we set the log manually and try again in 24 hours (prevents excessive calls on every loop)
+                        summoners[id].update(get_cellar_log(cellar_contract, id))
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
+
+        while True:
+            if loop_counter == 0:
+                print(f"   \r", end="")
+                loop_counter += 1
+                break
+            if loop_counter == 1:
+                print(f".  \r", end="")
+                loop_counter += 1
+                break
+            if loop_counter == 2:
+                print(f".. \r", end="")
+                loop_counter += 1
+                break
+            if loop_counter == 3:
+                print(f"...\r", end="")
+                loop_counter = 0
+                break
 
         # Sleep before repeating loop
         time.sleep(1)
@@ -190,19 +206,19 @@ def get_adventure_log(contract, id, user):
 
 
 def get_summoners(summoners):
-    while True:
-        if (
-            response := requests.get(
-                "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
-            )
-        ).status_code == 200 and response.json()["message"] == "OK":
-            # Loop through the JSON object, prepare the summoners dictionary with keys set from unique "tokenID"
+    try:
+        response = requests.get(
+            "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
+        )
+        if response.status_code == 200 and response.json()["message"] == "OK":
+            # Loop through the JSON object, prepare the summoners dictionary keys
+            # to match the unique "tokenID" for our summoners
             for metadata in response.json()["result"]:
-                # Prepare empty sub-dictionary with summoner ID as the key
+                # Prepare empty sub-dictionaries
                 summoners[int(metadata["tokenID"])] = {}
-            return True
-        else:
-            return False
+        return True
+    except:
+        return False
 
 
 def get_summoner_info(contract, id):
