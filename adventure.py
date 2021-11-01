@@ -2,6 +2,7 @@ import sys
 import time
 import requests
 import os
+import pprint
 import json
 from brownie import *
 
@@ -93,73 +94,99 @@ def main():
     # Fill the dictionary with on-chain data
     print("\nSummoners found:")
     for id in summoners.keys():
-        summoners[id].update(get_summoner_info(summoner_contract, id))
-        summoners[id].update(
-            get_summoner_next_level_xp(summoner_contract, summoners[id]["Level"])
-        )
-        summoners[id].update(get_cellar_log(cellar_contract, id, user))
+
+        if result := get_summoner_info(summoner_contract, id):
+            summoners[id].update(result)
+
+        if result := get_summoner_next_xp(summoner_contract, summoners[id]["Level"]):
+            summoners[id].update(result)
+
+        if result := get_cellar_log(cellar_contract, id):
+            summoners[id].update(result)
+
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
+
+    # We will adventure once a day at minimum, so we start here and count down to display upcoming events
+    next_event = DAY
 
     # Start the babysitting loop
     print("\nEntering babysitting loop. Triggered events will appear below:")
     while True:
 
+        now = time.time()
+
         for id in summoners.keys():
 
             # Adventure when ready
             if time.time() > summoners[id]["Adventure Log"]:
-                print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
-                adventure(summoner_contract, id, user)
-                # Refresh summoner info
-                summoners[id].update(get_summoner_info(summoner_contract, id))
-                summoners[id].update(
-                    get_summoner_next_level_xp(
+
+                if adventure(summoner_contract, id, user):
+                    print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
+
+                    # Refresh summoner info
+                    if result := get_summoner_info(summoner_contract, id):
+                        summoners[id].update(result)
+                    if result := get_summoner_next_xp(
                         summoner_contract, summoners[id]["Level"]
-                    )
-                )
+                    ):
+                        summoners[id].update(result)
 
             # Level up if XP is sufficient
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
-                level_up(summoner_contract, id, user)
 
-                # Refresh summoner info
-                summoners[id].update(get_summoner_info(summoner_contract, id))
-                summoners[id].update(
-                    get_summoner_next_level_xp(
+                if level_up(summoner_contract, id, user):
+                    print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
+                    # Refresh summoner info
+                    if result := get_summoner_info(summoner_contract, id):
+                        summoners[id].update(result)
+                    if result := get_summoner_next_xp(
                         summoner_contract, summoners[id]["Level"]
-                    )
-                )
+                    ):
+                        summoners[id].update(result)
 
                 # Claim gold after successful level_up
                 print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
                 claim_gold(gold_contract, id, user)
 
-            # Scout the Cellar dungeon
             if time.time() > summoners[id]["Cellar Log"]:
-                # Adventure if the dungeon will yield a reward
+
+                # Scout the Cellar dungeon and adventure if it will yield a reward
                 if cellar_contract.scout.call(id):
-                    print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
-                    adventure(cellar_contract, id, user)
-                    summoners[id].update(get_cellar_log(cellar_contract, id, user))
-                # Otherwise we reset the log manually and try again in 24 hours (prevents excessive calls on every loop)
+                    if adventure(cellar_contract, id, user):
+                        print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
+                        summoners[id].update(get_cellar_log(cellar_contract, id, user))
+                # Otherwise we set the log manually and try again in 24 hours (prevents excessive calls on every loop)
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Sleep before repeating loop
-        time.sleep(10)
+        time.sleep(1)
+
+
+def adventure(contract, id, user):
+    try:
+        contract.adventure(id, {"from": user})
+        return True
+    except ValueError:
+        return False
 
 
 def claim_gold(contract, id, user):
-    while True:
-        try:
-            contract.claim(id, {"from": user})
-            break
-        except ValueError:
-            # tx call might fail, so passing will continue the loop until success
-            pass
+    try:
+        contract.claim(id, {"from": user})
+        return True
+    except ValueError:
+        return False
+
+
+def get_adventure_log(contract, id, user):
+    try:
+        tx = contract.adventurers_log.call(id, {"from": user})
+        return {"Adventure Log": tx}
+    except ValueError:
+        return False
 
 
 def get_summoners(summoners):
@@ -168,74 +195,55 @@ def get_summoners(summoners):
             response := requests.get(
                 "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
             )
-        ).status_code == 200:
+        ).status_code == 200 and response.json()["message"] == "OK":
             # Loop through the JSON object, prepare the summoners dictionary with keys set from unique "tokenID"
             for metadata in response.json()["result"]:
-                # Store dictionary key as integer
+                # Prepare empty sub-dictionary with summoner ID as the key
                 summoners[int(metadata["tokenID"])] = {}
-            return len(summoners)
+            return True
         else:
-            time.sleep(5)
+            return False
 
 
 def get_summoner_info(contract, id):
-    while True:
-        tx = contract.summoner.call(id)  # returns tuple (XP, Log, ClassNumber, Level)
-        if tx[3]:
-            return {
-                "XP": int(tx[0] / DECIMALS),
-                "Adventure Log": tx[1],
-                "ClassName": CLASSES[
-                    tx[2]
-                ],  # translates to ClassName using CLASSES dictionary
-                "Level": tx[3],
-            }
-        else:
-            pass
+    tx = contract.summoner.call(id)  # returns tuple (XP, Log, ClassNumber, Level)
+    if tx[3]:
+        return {
+            "XP": tx[0] // DECIMALS,
+            "Adventure Log": tx[1],
+            "ClassName": CLASSES[
+                tx[2]
+            ],  # translates to ClassName using CLASSES dictionary
+            "Level": tx[3],
+        }
+    else:
+        return False
 
 
-def get_summoner_next_level_xp(contract, level):
-    while True:
-        if tx := contract.xp_required.call(level):
-            return {"XP_LevelUp": int(tx / DECIMALS)}
-        else:
-            pass  # tx might fail, so passing will continue the loop until success
+def get_summoner_next_xp(contract, level):
+    try:
+        tx = contract.xp_required.call(level)
+        return {"XP_LevelUp": tx // DECIMALS}
+    except ValueError:
+        return False
 
 
-def adventure(contract, id, user):
-    while True:
-        try:
-            contract.adventure(id, {"from": user})
-            break
-        except ValueError:
-            pass  # tx might fail, so passing will continue the loop until success
+def get_cellar_log(contract, id):
+    try:
+        tx = contract.adventurers_log.call(
+            id,
+        )
+        return {"Cellar Log": tx}
+    except ValueError:
+        return False
 
 
 def level_up(contract, id, user):
-    while True:
-        try:
-            contract.level_up(id, {"from": user})
-            break
-        except ValueError:
-            pass  # tx might fail, so passing will continue the loop until success
-
-
-def get_adventure_log(contract, id, user):
-    while True:
-        try:
-            tx = contract.adventurers_log.call(id, {"from": user})
-            return {"Adventure Log": tx}
-        except ValueError:
-            pass  # call might fail, so passing will continue the loop until success
-
-
-def get_cellar_log(contract, id, user):
-    while True:
-        try:
-            tx = contract.adventurers_log.call(id, {"from": user})
-            return {"Cellar Log": tx}
-        except ValueError:
-            pass  # call might fail, so passing will continue the loop until success
+    try:
+        contract.level_up(id, {"from": user})
+        return True
+    except ValueError:
+        return False
 
 
 def load_contract(address, alias, user):
