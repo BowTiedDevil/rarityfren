@@ -141,15 +141,15 @@ def main():
                         summoner_contract, summoners[id]["Level"]
                     ):
                         summoners[id].update(result)
-
-                # Claim gold after successful level_up
-                if claim_gold(gold_contract, id, user):
-                    print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
+                    # Claim gold after successful level_up
+                    if claim_gold(gold_contract, id, user):
+                        print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
 
             if time.time() > summoners[id]["Cellar Log"]:
-                # Scout the Cellar dungeon and adventure if it will yield a reward.
-                # Note some summoners may never be able to enter a dungeon, thus "Cellar Log"
-                # will always equal 0. We handle this by resetting it manually every 24 hours
+                # Scout the Cellar dungeon and adventure if it will yield
+                # a reward. Note some summoners may never be able to enter a
+                # dungeon, thus "Cellar Log" will always equal 0.
+                # Handle this by resetting it manually every 24 hours
                 # to prevent excessive looping
                 if cellar_contract.scout.call(id):
                     if adventure(cellar_contract, id, user):
@@ -158,6 +158,7 @@ def main():
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
 
+        # Display "..." progress text to indicate the script is working
         while True:
             if loop_counter == 0:
                 print(f"   \r", end="")
@@ -210,8 +211,8 @@ def get_summoners(summoners):
             "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
         )
         if response.status_code == 200 and response.json()["message"] == "OK":
-            # Loop through the JSON object, prepare the summoners dictionary keys
-            # to match the unique "tokenID" for our summoners
+            # Loop through the JSON object, prepare the summoners dictionary
+            # keys to match the unique "tokenID" for our summoners
             for metadata in response.json()["result"]:
                 # Prepare empty sub-dictionaries
                 summoners[int(metadata["tokenID"])] = {}
@@ -221,7 +222,10 @@ def get_summoners(summoners):
 
 
 def get_summoner_info(contract, id):
-    tx = contract.summoner.call(id)  # returns tuple (XP, Log, ClassNumber, Level)
+    # The summoner contract call will return a tuple of summoner info of
+    # form (XP, Log, ClassNumber, Level). "Log" is a unix timestamp for
+    # the next available adventure
+    tx = contract.summoner.call(id)
     if tx[3]:
         return {
             "XP": tx[0] // DECIMALS,
@@ -262,7 +266,8 @@ def level_up(contract, id, user):
 
 
 def load_contract(address, alias, user):
-    # Attempts to load the saved contract. If not found, fetch from FTM network explorer
+    # Attempts to load the saved contract.
+    # If not found, fetch from FTM network explorer and save.
     try:
         contract = Contract(alias)
     except ValueError:
