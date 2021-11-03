@@ -129,7 +129,8 @@ def main():
                     ):
                         summoners[id].update(result)
 
-            # Level up if XP is sufficient
+            # Level up if XP is sufficient, then refresh summoner
+            # info, fetch the new XP_LevelUp, and claim available gold
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
 
                 if level_up(summoner_contract, id, user):
@@ -161,19 +162,19 @@ def main():
         # Display "..." progress text to indicate the script is working
         while True:
             if loop_counter == 0:
-                print(f"   \r", end="")
+                print("   \r", end="", flush=True)
                 loop_counter += 1
                 break
             if loop_counter == 1:
-                print(f".  \r", end="")
+                print(".  \r", end="", flush=True)
                 loop_counter += 1
                 break
             if loop_counter == 2:
-                print(f".. \r", end="")
+                print(".. \r", end="", flush=True)
                 loop_counter += 1
                 break
             if loop_counter == 3:
-                print(f"...\r", end="")
+                print("...\r", end="", flush=True)
                 loop_counter = 0
                 break
 
@@ -183,6 +184,7 @@ def main():
 
 def adventure(contract, id, user):
     try:
+        network.gas_price(get_gas())
         contract.adventure(id, {"from": user})
         return True
     except ValueError:
@@ -191,6 +193,7 @@ def adventure(contract, id, user):
 
 def claim_gold(contract, id, user):
     try:
+        network.gas_price(get_gas())
         contract.claim(id, {"from": user})
         return True
     except ValueError:
@@ -202,6 +205,19 @@ def get_adventure_log(contract, id, user):
         tx = contract.adventurers_log.call(id, {"from": user})
         return {"Adventure Log": tx}
     except ValueError:
+        return False
+
+
+def get_gas():
+    try:
+        response = requests.get(
+            "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
+        )
+        if response.status_code == 200 and response.json()["message"] == "OK":
+            # Python's int() cannot convert a floating point number stored as a string, so we convert to float first
+            # since API sometimes returns a gas value with a decimal
+            return int(float(response.json()["result"]["ProposeGasPrice"]))
+    except:
         return False
 
 
@@ -259,6 +275,7 @@ def get_cellar_log(contract, id):
 
 def level_up(contract, id, user):
     try:
+        network.gas_price(get_gas())
         contract.level_up(id, {"from": user})
         return True
     except ValueError:
