@@ -117,10 +117,8 @@ def main():
 
             # Adventure when ready
             if time.time() > summoners[id]["Adventure Log"]:
-
+                print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
                 if adventure(summoner_contract, id, user):
-                    print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
-
                     # Refresh summoner info
                     if result := get_summoner_info(summoner_contract, id):
                         summoners[id].update(result)
@@ -132,9 +130,8 @@ def main():
             # Level up if XP is sufficient, then refresh summoner
             # info, fetch the new XP_LevelUp, and claim available gold
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-
+                print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
                 if level_up(summoner_contract, id, user):
-                    print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
                     # Refresh summoner info
                     if result := get_summoner_info(summoner_contract, id):
                         summoners[id].update(result)
@@ -153,8 +150,8 @@ def main():
                 # Handle this by resetting it manually every 24 hours
                 # to prevent excessive looping
                 if cellar_contract.scout.call(id):
+                    print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
                     if adventure(cellar_contract, id, user):
-                        print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
                         summoners[id].update(get_cellar_log(cellar_contract, id))
                 else:
                     summoners[id]["Cellar Log"] = time.time() + DAY
@@ -184,17 +181,16 @@ def main():
 
 def adventure(contract, id, user):
     try:
-        network.gas_price(get_gas())
-        contract.adventure(id, {"from": user})
+        contract.adventure(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
         return True
     except ValueError:
-        return False
+        #        return False
+        raise
 
 
 def claim_gold(contract, id, user):
     try:
-        network.gas_price(get_gas())
-        contract.claim(id, {"from": user})
+        contract.claim(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
         return True
     except ValueError:
         return False
@@ -202,7 +198,9 @@ def claim_gold(contract, id, user):
 
 def get_adventure_log(contract, id, user):
     try:
-        tx = contract.adventurers_log.call(id, {"from": user})
+        tx = contract.adventurers_log.call(
+            id, {"from": user, "gas_price": f"{get_gas()} gwei"}
+        )
         return {"Adventure Log": tx}
     except ValueError:
         return False
@@ -275,8 +273,7 @@ def get_cellar_log(contract, id):
 
 def level_up(contract, id, user):
     try:
-        network.gas_price(get_gas())
-        contract.level_up(id, {"from": user})
+        contract.level_up(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
         return True
     except ValueError:
         return False
