@@ -4,6 +4,7 @@ import requests
 import os
 import json
 from brownie import *
+from brownie.network.gas.strategies import LinearScalingStrategy
 
 # User variables. Change these to match your Fantom wallet public address and FTMScan API key (https://ftmscan.com/myapikey)
 ADDRESS_USER = "0x31d8204ba31768CB4CfA111B429BDc8F2c6f477b"
@@ -143,18 +144,19 @@ def main():
                     if claim_gold(gold_contract, id, user):
                         print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
 
-            if time.time() > summoners[id]["Cellar Log"]:
-                # Scout the Cellar dungeon and adventure if it will yield
-                # a reward. Note some summoners may never be able to enter a
-                # dungeon, thus "Cellar Log" will always equal 0.
-                # Handle this by resetting it manually every 24 hours
-                # to prevent excessive looping
-                if cellar_contract.scout.call(id):
-                    print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
-                    if adventure(cellar_contract, id, user):
-                        summoners[id].update(get_cellar_log(cellar_contract, id))
-                else:
-                    summoners[id]["Cellar Log"] = time.time() + DAY
+            # Scout the Cellar dungeon and adventure if it will yield
+            # a reward. Note some summoners may never be able to enter a
+            # dungeon, thus "Cellar Log" will always equal 0.
+            # Handle this by resetting it manually every 24 hours
+            # to prevent excessive looping
+            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
+                id
+            ):
+                print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
+                if adventure(cellar_contract, id, user):
+                    summoners[id].update(get_cellar_log(cellar_contract, id))
+            else:
+                summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Display "..." progress text to indicate the script is working
         while True:
@@ -181,16 +183,17 @@ def main():
 
 def adventure(contract, id, user):
     try:
-        contract.adventure(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
+        get_gas()
+        contract.adventure(id, {"from": user})
         return True
     except ValueError:
-        #        return False
-        raise
+        return False
 
 
 def claim_gold(contract, id, user):
     try:
-        contract.claim(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
+        get_gas()
+        contract.claim(id, {"from": user})
         return True
     except ValueError:
         return False
@@ -198,9 +201,7 @@ def claim_gold(contract, id, user):
 
 def get_adventure_log(contract, id, user):
     try:
-        tx = contract.adventurers_log.call(
-            id, {"from": user, "gas_price": f"{get_gas()} gwei"}
-        )
+        tx = contract.adventurers_log.call(id, {"from": user})
         return {"Adventure Log": tx}
     except ValueError:
         return False
@@ -212,9 +213,15 @@ def get_gas():
             "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
         )
         if response.status_code == 200 and response.json()["message"] == "OK":
-            # Python's int() cannot convert a floating point number stored as a string, so we convert to float first
-            # since API sometimes returns a gas value with a decimal
-            return int(float(response.json()["result"]["ProposeGasPrice"]))
+            # Python's int() cannot convert a floating point number
+            # stored as a string, so we convert to float first since
+            # the API sometimes returns a value with a decimal
+            result = int(float(response.json()["result"]["ProposeGasPrice"]))
+        gas_strategy = LinearScalingStrategy(
+            f"{result} gwei", f"{2 * result} gwei", 1.1, 5
+        )
+        network.gas_price(gas_strategy)
+        return True
     except:
         return False
 
@@ -263,9 +270,7 @@ def get_summoner_next_xp(contract, level):
 
 def get_cellar_log(contract, id):
     try:
-        tx = contract.adventurers_log.call(
-            id,
-        )
+        tx = contract.adventurers_log.call(id)
         return {"Cellar Log": tx}
     except ValueError:
         return False
@@ -273,7 +278,8 @@ def get_cellar_log(contract, id):
 
 def level_up(contract, id, user):
     try:
-        contract.level_up(id, {"from": user, "gas_price": f"{get_gas()} gwei"})
+        get_gas()
+        contract.level_up(id, {"from": user})
         return True
     except ValueError:
         return False
