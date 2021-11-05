@@ -1,5 +1,6 @@
 import sys
 import time
+from brownie.network.main import gas_price
 import requests
 import os
 import json
@@ -52,7 +53,9 @@ DAY = 24 * 60 * 60  # 1 day in seconds
 
 
 def main():
-    # Initialize a blank summoners dictionary
+
+    global user
+    global summoners
     summoners = {}
 
     try:
@@ -71,20 +74,16 @@ def main():
 
     print("\nContracts loaded:")
 
-    gold_contract = load_contract(GOLD_CONTRACT_ADDRESS, "Rarity: Gold", user)
-    summoner_contract = load_contract(
-        SUMMONER_CONTRACT_ADDRESS, "Rarity: Summoner", user
-    )
-    cellar_contract = load_contract(CELLAR_CONTRACT_ADDRESS, "Rarity: Cellar", user)
-    crafting_contract = load_contract(
-        CRAFTING_CONTRACT_ADDRESS, "Rarity: Crafting", user
-    )
-    skills_contract = load_contract(SKILLS_CONTRACT_ADDRESS, "Rarity: Skills", user)
+    gold_contract = load_contract(GOLD_CONTRACT_ADDRESS, "Rarity: Gold")
+    summoner_contract = load_contract(SUMMONER_CONTRACT_ADDRESS, "Rarity: Summoner")
+    cellar_contract = load_contract(CELLAR_CONTRACT_ADDRESS, "Rarity: Cellar")
+    crafting_contract = load_contract(CRAFTING_CONTRACT_ADDRESS, "Rarity: Crafting")
+    skills_contract = load_contract(SKILLS_CONTRACT_ADDRESS, "Rarity: Skills")
     attributes_contract = load_contract(
-        ATTRIBUTES_CONTRACT_ADDRESS, "Rarity: Attributes", user
+        ATTRIBUTES_CONTRACT_ADDRESS, "Rarity: Attributes"
     )
 
-    if get_summoners(summoners):
+    if get_summoners():
         pass
     else:
         sys.exit(
@@ -95,14 +94,12 @@ def main():
     print("\nSummoners found:")
     for id in summoners.keys():
 
-        if result := get_summoner_info(summoner_contract, id):
-            summoners[id].update(result)
-
-        if result := get_summoner_next_xp(summoner_contract, summoners[id]["Level"]):
-            summoners[id].update(result)
-
-        if result := get_cellar_log(cellar_contract, id):
-            summoners[id].update(result)
+        summoners[id].update(get_summoner_info(summoner_contract, id))
+        summoners[id].update(
+            get_summoner_next_xp(summoner_contract, summoners[id]["Level"])
+        )
+        summoners[id].update(get_cellar_log(cellar_contract, id))
+        summoners[id].update(get_claimable_gold(gold_contract, id))
 
         print(
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["ClassName"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
@@ -113,50 +110,6 @@ def main():
     # Start the babysitting loop
     print("\nEntering babysitting loop. Triggered events will appear below:")
     while True:
-
-        for id in summoners.keys():
-
-            # Adventure when ready
-            if time.time() > summoners[id]["Adventure Log"]:
-                print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
-                if adventure(summoner_contract, id, user):
-                    # Refresh summoner info
-                    if result := get_summoner_info(summoner_contract, id):
-                        summoners[id].update(result)
-                    if result := get_summoner_next_xp(
-                        summoner_contract, summoners[id]["Level"]
-                    ):
-                        summoners[id].update(result)
-
-            # Level up if XP is sufficient, then refresh summoner
-            # info, fetch the new XP_LevelUp, and claim available gold
-            if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
-                if level_up(summoner_contract, id, user):
-                    # Refresh summoner info
-                    if result := get_summoner_info(summoner_contract, id):
-                        summoners[id].update(result)
-                    if result := get_summoner_next_xp(
-                        summoner_contract, summoners[id]["Level"]
-                    ):
-                        summoners[id].update(result)
-                    # Claim gold after successful level_up
-                    if claim_gold(gold_contract, id, user):
-                        print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
-
-            # Scout the Cellar dungeon and adventure if it will yield
-            # a reward. Note some summoners may never be able to enter a
-            # dungeon, thus "Cellar Log" will always equal 0.
-            # Handle this by resetting it manually every 24 hours
-            # to prevent excessive looping
-            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
-                id
-            ):
-                print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
-                if adventure(cellar_contract, id, user):
-                    summoners[id].update(get_cellar_log(cellar_contract, id))
-            else:
-                summoners[id]["Cellar Log"] = time.time() + DAY
 
         # Display "..." progress text to indicate the script is working
         while True:
@@ -177,37 +130,86 @@ def main():
                 loop_counter = 0
                 break
 
-        # Sleep before repeating loop
+        for id in summoners.keys():
+
+            # Adventure, then update summoner info
+            if time.time() > summoners[id]["Adventure Log"]:
+                print(f'[Adventure] #{id} ({summoners[id]["ClassName"]})')
+                if adventure(summoner_contract, id):
+                    summoners[id].update(get_summoner_info(summoner_contract, id))
+
+            # Level up if XP is sufficient, refresh summoner info, and fetch the new XP_LevelUp
+            if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
+                print(f'[LevelUp] #{id} ({summoners[id]["ClassName"]})')
+                if level_up(summoner_contract, id):
+                    summoners[id].update(get_summoner_info(summoner_contract, id))
+                    summoners[id].update(
+                        get_summoner_next_xp(summoner_contract, summoners[id]["Level"])
+                    )
+
+            # Claim available gold
+            if summoners[id]["Claimable Gold"]:
+                print(f'[ClaimGold] #{id} ({summoners[id]["ClassName"]})')
+                claim_gold(gold_contract, id)
+
+            # Scout the Cellar and adventure if it will yield
+            # a reward. Note some summoners may never be able to enter a
+            # dungeon, thus "Cellar Log" will always equal 0.
+            # Handle this by resetting it manually every 24 hours
+            # to prevent excessive looping
+            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
+                id
+            ):
+                print(f'[Cellar] #{id} ({summoners[id]["ClassName"]})')
+                if adventure(cellar_contract, id):
+                    summoners[id].update(get_cellar_log(cellar_contract, id))
+            else:
+                summoners[id]["Cellar Log"] = time.time() + DAY
+
         time.sleep(1)
 
 
-def adventure(contract, id, user):
+def adventure(contract, id):
     try:
-        get_gas()
-        contract.adventure(id, {"from": user})
+        contract.adventure(
+            id, {"from": user, "gas_price": get_gas_strategy(), "required_confs": 10}
+        )
         return True
     except ValueError:
         return False
 
 
-def claim_gold(contract, id, user):
+def claim_gold(contract, id):
     try:
-        get_gas()
-        contract.claim(id, {"from": user})
+        contract.claim(
+            id, {"from": user, "gas_price": get_gas_strategy(), "required_confs": 10}
+        )
         return True
     except ValueError:
         return False
 
 
-def get_adventure_log(contract, id, user):
+def get_adventure_log(contract, id):
     try:
-        tx = contract.adventurers_log.call(id, {"from": user})
+        tx = contract.adventurers_log.call(id)
         return {"Adventure Log": tx}
     except ValueError:
         return False
 
 
-def get_gas():
+def get_cellar_log(contract, id):
+    try:
+        tx = contract.adventurers_log.call(id)
+        return {"Cellar Log": tx}
+    except ValueError:
+        return False
+
+
+def get_claimable_gold(contract, id):
+    return {"Claimable Gold": contract.claimable.call(id) // DECIMALS}
+
+
+def get_gas_strategy():
     try:
         response = requests.get(
             "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
@@ -217,16 +219,17 @@ def get_gas():
             # stored as a string, so we convert to float first since
             # the API sometimes returns a value with a decimal
             result = int(float(response.json()["result"]["ProposeGasPrice"]))
-        gas_strategy = LinearScalingStrategy(
-            f"{result} gwei", f"{2 * result} gwei", 1.1, 5
-        )
-        network.gas_price(gas_strategy)
-        return True
+            return LinearScalingStrategy(
+                initial_gas_price=f"{result} gwei",
+                max_gas_price=f"{5*result} gwei",
+                increment=1.125,
+                time_duration=5,
+            )
     except:
-        return False
+        raise
 
 
-def get_summoners(summoners):
+def get_summoners():
     try:
         response = requests.get(
             "https://api.ftmscan.com/api", params=FTMSCAN_API_PARAMS
@@ -262,30 +265,22 @@ def get_summoner_info(contract, id):
 
 def get_summoner_next_xp(contract, level):
     try:
-        tx = contract.xp_required.call(level)
-        return {"XP_LevelUp": tx // DECIMALS}
-    except ValueError:
-        return False
+        return {"XP_LevelUp": contract.xp_required.call(level) // DECIMALS}
+    except:
+        raise
 
 
-def get_cellar_log(contract, id):
+def level_up(contract, id):
     try:
-        tx = contract.adventurers_log.call(id)
-        return {"Cellar Log": tx}
-    except ValueError:
-        return False
-
-
-def level_up(contract, id, user):
-    try:
-        get_gas()
-        contract.level_up(id, {"from": user})
+        contract.level_up(
+            id, {"from": user, "gas_price": get_gas_strategy(), "required_confs": 10}
+        )
         return True
     except ValueError:
         return False
 
 
-def load_contract(address, alias, user):
+def load_contract(address, alias):
     # Attempts to load the saved contract.
     # If not found, fetch from FTM network explorer and save.
     try:
