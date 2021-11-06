@@ -148,16 +148,18 @@ def main():
 
 
 def adventure(contract, id):
-    if contract.adventure(id, {"from": user, "gas_price": get_gas()}):
+    try:
+        contract.adventure(id, {"from": user, "gas_price": get_gas()})
         return True
-    else:
+    except ValueError:
         return False
 
 
 def claim_gold(id):
-    if gold_contract.claim(id, {"from": user, "gas_price": get_gas()}):
+    try:
+        gold_contract.claim(id, {"from": user, "gas_price": get_gas()})
         return True
-    else:
+    except ValueError:
         return False
 
 
@@ -220,9 +222,10 @@ def get_summoner_next_xp(level):
 
 
 def level_up(id):
-    if summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()}):
+    try:
+        summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()})
         return True
-    else:
+    except ValueError:
         return False
 
 
