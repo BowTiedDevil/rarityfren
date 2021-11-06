@@ -140,52 +140,33 @@ def main():
             # dungeon, thus "Cellar Log" will always equal 0.
             # Handle this by resetting it manually every 24 hours
             # to prevent excessive looping
-            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
-                id
-            ):
-                if adventure(cellar_contract, id):
+            if time.time() > summoners[id]["Cellar Log"] > 0:
+                if cellar_contract.scout.call(id) and adventure(cellar_contract, id):
                     summoners[id]["Cellar Log"] += DAY
-            else:
-                summoners[id]["Cellar Log"] = time.time() + DAY
 
         time.sleep(10)
 
 
 def adventure(contract, id):
-    while True:
-        try:
-            contract.adventure(id, {"from": user, "gas_price": get_gas()})
-            break
-        except ValueError:
-            pass
+    if contract.adventure(id, {"from": user, "gas_price": get_gas()}):
+        return True
+    else:
+        return False
 
 
 def claim_gold(id):
-    while True:
-        try:
-            gold_contract.claim(id, {"from": user, "gas_price": get_gas()})
-            break
-        except ValueError:
-            pass
+    if gold_contract.claim(id, {"from": user, "gas_price": get_gas()}):
+        return True
+    else:
+        return False
 
 
 def get_adventure_log(id):
-    try:
-        tx = summoner_contract.adventurers_log.call(id)
-        return {"Adventure Log": tx}
-    except ValueError:
-        return False
+    return {"Adventure Log": summoner_contract.adventurers_log.call(id)}
 
 
 def get_cellar_log(id):
-    try:
-        result = cellar_contract.adventurers_log.call(id)
-        if result:
-            return {"Cellar Log": result}
-        else:
-            return {"Cellar Log": time.time() + DAY}
-    except ValueError:
-        return False
+    return {"Cellar Log": cellar_contract.adventurers_log.call(id)}
 
 
 def get_claimable_gold(id):
@@ -193,19 +174,16 @@ def get_claimable_gold(id):
 
 
 def get_gas():
-    try:
-        response = requests.get(
-            "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
+    response = requests.get(
+        "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
+    )
+    if response.status_code == 200 and response.json()["message"] == "OK":
+        # Python's int() cannot convert a floating point number
+        # stored as a string, so we convert to float first since
+        # the API sometimes returns a value with a decimal
+        network.gas_price(
+            f'{int(float(response.json()["result"]["ProposeGasPrice"]))} gwei'
         )
-        if response.status_code == 200 and response.json()["message"] == "OK":
-            # Python's int() cannot convert a floating point number
-            # stored as a string, so we convert to float first since
-            # the API sometimes returns a value with a decimal
-            network.gas_price(
-                f'{int(float(response.json()["result"]["ProposeGasPrice"]))} gwei'
-            )
-    except:
-        raise
 
 
 def get_summoners():
@@ -229,33 +207,23 @@ def get_summoner_info(id):
     # form (XP, Log, ClassNumber, Level). "Log" is a unix timestamp for
     # the next available adventure
     tx = summoner_contract.summoner.call(id)
-    if tx[3]:
-        return {
-            "XP": tx[0] // DECIMALS,
-            "Adventure Log": tx[1],
-            "Class Name": CLASSES[
-                tx[2]
-            ],  # translates to Class Name using CLASSES dictionary
-            "Level": tx[3],
-        }
-    else:
-        return False
+    return {
+        "XP": tx[0] // DECIMALS,
+        "Adventure Log": tx[1],
+        "Class Name": CLASSES[tx[2]],
+        "Level": tx[3],
+    }
 
 
 def get_summoner_next_xp(level):
-    try:
-        return {"XP_LevelUp": summoner_contract.xp_required.call(level) // DECIMALS}
-    except:
-        raise
+    return {"XP_LevelUp": summoner_contract.xp_required.call(level) // DECIMALS}
 
 
 def level_up(id):
-    while True:
-        try:
-            summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()})
-            break
-        except ValueError:
-            pass
+    if summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()}):
+        return True
+    else:
+        return False
 
 
 def load_contract(address, alias):
