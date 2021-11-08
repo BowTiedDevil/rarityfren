@@ -63,7 +63,7 @@ def main():
         user = accounts.load("rarity")
     except:
         sys.exit(
-            "Could not load account!\nVerify that your account is listed using 'brownie accounts list' and that you are using the correct password.\nIf you have not added an account, run 'brownie accounts new rarity' now."
+            "Could not load account! Verify that your account is listed using 'brownie accounts list' and that you are using the correct password. If you have not added an account, run 'brownie accounts new rarity' now."
         )
 
     try:
@@ -124,9 +124,8 @@ def main():
 
             # Adventure, then update summoner info
             if time.time() > summoners[id]["Adventure Log"]:
-                if adventure(summoner_contract, id):
-                    # TODO: figure out how long fantom blockchain takes to return accurate data
-                    summoners[id]["Adventure Log"] += DAY
+                if summoner_adventure(id):
+                    summoners[id].update(get_summoner_info(id))
 
             # Level up if XP is sufficient, refresh summoner info, and fetch the new XP_LevelUp
             if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
@@ -134,6 +133,7 @@ def main():
                     summoners[id]["Level"] += 1
                     summoners[id].update(get_summoner_next_xp(summoners[id]["Level"]))
                     summoners[id].update(get_claimable_gold(id))
+                    ### TODO?
 
             # Claim gold if we've just leveled up (XP == 0) and the contract shows a positive
             # balance ready to claim
@@ -146,23 +146,38 @@ def main():
             # dungeon, thus "Cellar Log" will always equal 0.
             # Handle this by resetting it manually every 24 hours
             # to prevent excessive looping
-            if time.time() > summoners[id][
-                "Cellar Log"
-            ] > 0 and cellar_contract.scout.call(id):
-                if adventure(cellar_contract, id):
+            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
+                id
+            ):
+                if cellar_adventure(id):
                     summoners[id]["Cellar Log"] += DAY
 
         time.sleep(60)
         # End of babysitting loop
 
 
-def adventure(contract, id):
+def summoner_adventure(id):
     try:
         estimate = summoner_contract.adventure.estimate_gas(
             id, {"from": user, "gas_price": get_gas()}
         )
         if (user.balance() / WEI_PER_GWEI) >= estimate:
-            contract.adventure(id, {"from": user, "gas_price": get_gas()})
+            summoner_contract.adventure(id, {"from": user, "gas_price": get_gas()})
+            return True
+        else:
+            print("Insufficent account balance to send transaction")
+            return False
+    except ValueError:
+        return False
+
+
+def cellar_adventure(id):
+    try:
+        estimate = cellar_contract.adventure.estimate_gas(
+            id, {"from": user, "gas_price": get_gas()}
+        )
+        if (user.balance() / WEI_PER_GWEI) >= estimate:
+            cellar_contract.adventure(id, {"from": user, "gas_price": get_gas()})
             return True
         else:
             print("Insufficent account balance to send transaction")
