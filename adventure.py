@@ -50,6 +50,8 @@ DECIMALS = 10 ** 18
 
 DAY = 24 * 60 * 60  # 1 day in seconds
 
+WEI_PER_GWEI = 10 ** 9
+
 
 def main():
 
@@ -113,8 +115,9 @@ def main():
             f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["Class Name"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
         )
 
-    # Start the babysitting loop
     print("\nEntering babysitting loop. Triggered events will appear below:")
+
+    # Start of babysitting loop
     while True:
 
         for id in summoners.keys():
@@ -130,37 +133,62 @@ def main():
                 if level_up(id):
                     summoners[id]["Level"] += 1
                     summoners[id].update(get_summoner_next_xp(summoners[id]["Level"]))
+                    summoners[id].update(get_claimable_gold(id))
 
-            # Claim available gold
-            if summoners[id]["Claimable Gold"]:
-                claim_gold(id)
+            # Claim gold if we've just leveled up (XP == 0) and the contract shows a positive
+            # balance ready to claim
+            if summoners[id]["XP"] == 0 and summoners[id]["Claimable Gold"]:
+                if claim_gold(id):
+                    summoners[id].update(get_claimable_gold(id))
 
             # Scout the Cellar and adventure if it will yield
             # a reward. Note some summoners may never be able to enter a
             # dungeon, thus "Cellar Log" will always equal 0.
             # Handle this by resetting it manually every 24 hours
             # to prevent excessive looping
-            if time.time() > summoners[id]["Cellar Log"] > 0:
-                if cellar_contract.scout.call(id) and adventure(cellar_contract, id):
+            if time.time() > summoners[id][
+                "Cellar Log"
+            ] > 0 and cellar_contract.scout.call(id):
+                if adventure(cellar_contract, id):
                     summoners[id]["Cellar Log"] += DAY
 
-        time.sleep(10)
+        time.sleep(60)
+        # End of babysitting loop
 
 
 def adventure(contract, id):
     try:
-        contract.adventure(id, {"from": user, "gas_price": get_gas()})
-        return True
+        estimate = summoner_contract.adventure.estimate_gas(
+            id, {"from": user, "gas_price": get_gas()}
+        )
+        if (user.balance() / WEI_PER_GWEI) >= estimate:
+            contract.adventure(id, {"from": user, "gas_price": get_gas()})
+            return True
+        else:
+            print("Insufficent account balance to send transaction")
+            return False
     except ValueError:
         return False
 
 
 def claim_gold(id):
     try:
-        gold_contract.claim(id, {"from": user, "gas_price": get_gas()})
-        return True
+        estimate = gold_contract.claim.estimate_gas(
+            id, {"from": user, "gas_price": get_gas()}
+        )
+        if (user.balance() / WEI_PER_GWEI) >= estimate:
+            gold_contract.claim(id, {"from": user, "gas_price": get_gas()})
+            return True
+        else:
+            print("Insufficent account balance to send transaction")
+            return False
     except ValueError:
         return False
+
+
+def get_account_balance():
+    """Return account balance in gwei"""
+    return user.balance() / WEI_PER_GWEI
 
 
 def get_adventure_log(id):
@@ -223,8 +251,15 @@ def get_summoner_next_xp(level):
 
 def level_up(id):
     try:
-        summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()})
-        return True
+        estimate = summoner_contract.level_up.estimate_gas(
+            id, {"from": user, "gas_price": get_gas()}
+        )
+        if (user.balance() / WEI_PER_GWEI) >= estimate:
+            summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()})
+            return True
+        else:
+            print("Insufficent account balance to send transaction")
+            return False
     except ValueError:
         return False
 
