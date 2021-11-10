@@ -112,10 +112,10 @@ def main():
         summoners[id].update(gold_get_claimable(id))
 
         print(
-            f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["Class Name"]} with ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]}) XP'
+            f'• #{id}: Level {summoners[id]["Level"]} {summoners[id]["Class Name"]} ({summoners[id]["XP"]} / {summoners[id]["XP_LevelUp"]} XP)'
         )
 
-    print("\nEntering babysitting loop. Triggered events will appear below:")
+    print("\nEntering babysitting loop. Triggered events will appear below:\n")
 
     # Start of babysitting loop
     while True:
