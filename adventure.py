@@ -188,7 +188,7 @@ def account_get_summoners():
 
 def adventure_cellar(id):
     try:
-        gas_price = get_gas()
+        gas_price = get_gas_price()
         estimate = cellar_contract.adventure.estimate_gas(
             id, {"from": user, "gas_price": gas_price}
         )
@@ -215,7 +215,7 @@ def adventure_get_log(id):
 
 def adventure_summoner(id):
     try:
-        gas_price = get_gas()
+        gas_price = get_gas_price()
         estimate = summoner_contract.adventure.estimate_gas(
             id, {"from": user, "gas_price": gas_price}
         )
@@ -249,7 +249,7 @@ def contract_load(address, alias):
 
 def gold_claim(id):
     try:
-        gas_price = get_gas()
+        gas_price = get_gas_price()
         estimate = gold_contract.claim.estimate_gas(
             id, {"from": user, "gas_price": gas_price}
         )
@@ -268,7 +268,7 @@ def gold_get_claimable(id):
     return {"Claimable Gold": gold_contract.claimable.call(id) // DECIMALS}
 
 
-def get_gas():
+def get_gas_price():
     response = requests.get(
         "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
     )
@@ -300,7 +300,7 @@ def summoner_get_next_xp(level):
 
 def summoner_level_up(id):
     try:
-        gas_price = get_gas()
+        gas_price = get_gas_price()
         estimate = summoner_contract.level_up.estimate_gas(
             id, {"from": user, "gas_price": gas_price}
         )
