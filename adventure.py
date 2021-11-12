@@ -227,7 +227,7 @@ def adventure_summoner(id):
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
         try:
-            summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})   
+            summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})
             time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         except Exception as e:
