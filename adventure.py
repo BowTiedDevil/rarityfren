@@ -55,6 +55,8 @@ MINIMUM_CONFIRMATION_TIME = (
     10  # How long to wait (in seconds) after a successful confirmation
 )
 
+GAS_BUFFER = 1.1  # Add 10% to value found in get_gas()
+
 
 def main():
 
@@ -275,7 +277,7 @@ def get_gas():
         # stored as a string, so we convert to float first since
         # the API sometimes returns a value with a decimal
         network.gas_price(
-            f'{int(1.1 * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
+            f'{int(GAS_BUFFER * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
         )
 
 

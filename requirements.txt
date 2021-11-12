@@ -1,0 +1,2 @@
+eth-brownie==1.17.1
+requests==2.26.0
