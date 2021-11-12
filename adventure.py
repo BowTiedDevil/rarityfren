@@ -1,6 +1,5 @@
 import sys
 import time
-from brownie.network.main import gas_price
 import requests
 import os
 import json
@@ -51,6 +50,10 @@ DECIMALS = 10 ** 18
 DAY = 24 * 60 * 60  # 1 day in seconds
 
 WEI_PER_GWEI = 10 ** 9
+
+MINIMUM_CONFIRMATION_TIME = (
+    10  # How long to wait (in seconds) after a successful confirmation
+)
 
 
 def main():
@@ -106,7 +109,7 @@ def main():
     print("\nSummoners found:")
     for id in summoners.keys():
 
-        summoners[id].update(summoner_get(id))
+        summoners[id].update(summoner_get_stats(id))
         summoners[id].update(summoner_get_next_xp(summoners[id]["Level"]))
         summoners[id].update(cellar_get_log(id))
         summoners[id].update(gold_get_claimable(id))
@@ -123,36 +126,40 @@ def main():
         for id in summoners.keys():
 
             # Adventure, then update summoner info
-            if time.time() > summoners[id]["Adventure Log"]:
-                if adventure_summoner(id):
-                    summoners[id].update(summoner_get(id))
+            if time.time() > summoners[id]["Adventure Log"] and adventure_summoner(id):
+                summoners[id].update(summoner_get_stats(id))
 
-            # Level up if XP is sufficient, refresh summoner info, and fetch the new XP_LevelUp
-            if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"]:
-                if summoner_level_up(id):
-                    summoners[id].update(summoner_get(id))
-                    summoners[id].update(summoner_get_next_xp(summoners[id]["Level"]))
-                    summoners[id].update(gold_get_claimable(id))
+            # Level up if XP is sufficient, refresh summoner info, fetch the new XP_LevelUp, and
+            # check for claimable gold
+            if summoners[id]["XP"] >= summoners[id]["XP_LevelUp"] and summoner_level_up(
+                id
+            ):
+                summoners[id].update(summoner_get_stats(id))
+                summoners[id].update(summoner_get_next_xp(summoners[id]["Level"]))
+                summoners[id].update(gold_get_claimable(id))
 
             # Claim gold if we've just leveled up (XP == 0) and the contract shows a positive
             # balance ready to claim
-            if summoners[id]["XP"] == 0 and summoners[id]["Claimable Gold"]:
-                if gold_claim(id):
-                    summoners[id].update(summoner_get(id))
-                    summoners[id].update(gold_get_claimable(id))
+            if (
+                summoners[id]["XP"] == 0
+                and summoners[id]["Claimable Gold"]
+                and gold_claim(id)
+            ):
+                summoners[id].update(gold_get_claimable(id))
 
             # Scout the Cellar and adventure if it will yield
             # a reward. Note some summoners may never be able to enter a
             # dungeon, thus "Cellar Log" will always equal 0.
             # Handle this by resetting it manually every 24 hours
             # to prevent excessive looping
-            if time.time() > summoners[id]["Cellar Log"] and cellar_contract.scout.call(
-                id
+            if (
+                time.time() > summoners[id]["Cellar Log"]
+                and cellar_contract.scout.call(id)
+                and adventure_cellar(id)
             ):
-                if adventure_cellar(id):
-                    summoners[id].update(cellar_get_log(id))
+                summoners[id].update(cellar_get_log(id))
 
-        time.sleep(60)
+        time.sleep(1)
         # End of babysitting loop
 
 
@@ -179,16 +186,24 @@ def account_get_summoners():
 
 def adventure_cellar(id):
     try:
+        gas_price = get_gas()
         estimate = cellar_contract.adventure.estimate_gas(
-            id, {"from": user, "gas_price": get_gas()}
+            id, {"from": user, "gas_price": gas_price}
         )
-        if (user.balance() / WEI_PER_GWEI) >= estimate:
-            cellar_contract.adventure(id, {"from": user, "gas_price": get_gas()})
+    except:
+        print("Could not estimate gas!")
+        return False
+
+    if (user.balance() / WEI_PER_GWEI) >= estimate:
+        try:
+            cellar_contract.adventure(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
-        else:
-            print("Insufficent account balance to send transaction")
+        except ValueError:
+            print("Transaction failed!")
             return False
-    except ValueError:
+    else:
+        print("Insufficent account balance to send transaction")
         return False
 
 
@@ -198,16 +213,18 @@ def adventure_get_log(id):
 
 def adventure_summoner(id):
     try:
+        gas_price = get_gas()
         estimate = summoner_contract.adventure.estimate_gas(
-            id, {"from": user, "gas_price": get_gas()}
+            id, {"from": user, "gas_price": gas_price}
         )
         if (user.balance() / WEI_PER_GWEI) >= estimate:
-            summoner_contract.adventure(id, {"from": user, "gas_price": get_gas()})
+            summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         else:
             print("Insufficent account balance to send transaction")
             return False
-    except ValueError:
+    except:
         return False
 
 
@@ -230,11 +247,13 @@ def contract_load(address, alias):
 
 def gold_claim(id):
     try:
+        gas_price = get_gas()
         estimate = gold_contract.claim.estimate_gas(
-            id, {"from": user, "gas_price": get_gas()}
+            id, {"from": user, "gas_price": gas_price}
         )
         if (user.balance() / WEI_PER_GWEI) >= estimate:
-            gold_contract.claim(id, {"from": user, "gas_price": get_gas()})
+            gold_contract.claim(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         else:
             print("Insufficent account balance to send transaction")
@@ -256,11 +275,11 @@ def get_gas():
         # stored as a string, so we convert to float first since
         # the API sometimes returns a value with a decimal
         network.gas_price(
-            f'{int(float(response.json()["result"]["ProposeGasPrice"]))} gwei'
+            f'{int(1.1 * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
         )
 
 
-def summoner_get(id):
+def summoner_get_stats(id):
     # The summoner contract call will return a tuple of summoner info of
     # form (XP, Log, ClassNumber, Level). "Log" is a unix timestamp for
     # the next available adventure
@@ -279,11 +298,13 @@ def summoner_get_next_xp(level):
 
 def summoner_level_up(id):
     try:
+        gas_price = get_gas()
         estimate = summoner_contract.level_up.estimate_gas(
-            id, {"from": user, "gas_price": get_gas()}
+            id, {"from": user, "gas_price": gas_price}
         )
         if (user.balance() / WEI_PER_GWEI) >= estimate:
-            summoner_contract.level_up(id, {"from": user, "gas_price": get_gas()})
+            summoner_contract.level_up(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         else:
             print("Insufficent account balance to send transaction")
