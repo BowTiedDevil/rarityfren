@@ -226,9 +226,13 @@ def adventure_summoner(id):
         return False
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
-        summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})
-        time.sleep(MINIMUM_CONFIRMATION_TIME)
-        return True
+        try:
+            summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})   
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
+            return True
+        except Exception as e:
+            print(f"Exception: {e}")
+            return False
     else:
         print("Insufficent account balance to send transaction")
         return False
@@ -263,9 +267,13 @@ def gold_claim(id):
         return False
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
-        gold_contract.claim(id, {"from": user, "gas_price": gas_price})
-        time.sleep(MINIMUM_CONFIRMATION_TIME)
-        return True
+        try:
+            gold_contract.claim(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
+            return True
+        except Exception as e:
+            print(f"Exception: {e}")
+            return False
     else:
         print("Insufficent account balance to send transaction")
         return False
@@ -317,9 +325,13 @@ def summoner_level_up(id):
         return False
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
-        summoner_contract.level_up(id, {"from": user, "gas_price": gas_price})
-        time.sleep(MINIMUM_CONFIRMATION_TIME)
-        return True
+        try:
+            summoner_contract.level_up(id, {"from": user, "gas_price": gas_price})
+            time.sleep(MINIMUM_CONFIRMATION_TIME)
+            return True
+        except Exception as e:
+            print(f"Exception: {e}")
+            return False
     else:
         print("Insufficent account balance to send transaction")
         return False
