@@ -161,7 +161,7 @@ def main():
             ):
                 summoners[id].update(cellar_get_log(id))
 
-        time.sleep(1)
+        time.sleep(60)
         # End of babysitting loop
 
 
