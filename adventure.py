@@ -188,10 +188,8 @@ def account_get_summoners():
 
 def adventure_cellar(id):
     try:
-        gas_price = get_gas_price()
-        estimate = cellar_contract.adventure.estimate_gas(
-            id, {"from": user, "gas_price": gas_price}
-        )
+        get_gas_price()
+        estimate = cellar_contract.adventure.estimate_gas(id, {"from": user})
     except Exception as e:
         print("Could not estimate gas!")
         print(f"Exception: {e}")
@@ -199,7 +197,8 @@ def adventure_cellar(id):
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
         try:
-            cellar_contract.adventure(id, {"from": user, "gas_price": gas_price})
+            get_gas_price()
+            cellar_contract.adventure(id, {"from": user})
             time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         except ValueError:
@@ -216,10 +215,8 @@ def adventure_get_log(id):
 
 def adventure_summoner(id):
     try:
-        gas_price = get_gas_price()
-        estimate = summoner_contract.adventure.estimate_gas(
-            id, {"from": user, "gas_price": gas_price}
-        )
+        get_gas_price()
+        estimate = summoner_contract.adventure.estimate_gas(id, {"from": user})
     except Exception as e:
         print("Could not estimate gas!")
         print(f"Exception: {e}")
@@ -227,7 +224,8 @@ def adventure_summoner(id):
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
         try:
-            summoner_contract.adventure(id, {"from": user, "gas_price": gas_price})
+            get_gas_price()
+            summoner_contract.adventure(id, {"from": user})
             time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         except Exception as e:
@@ -257,10 +255,8 @@ def contract_load(address, alias):
 
 def gold_claim(id):
     try:
-        gas_price = get_gas_price()
-        estimate = gold_contract.claim.estimate_gas(
-            id, {"from": user, "gas_price": gas_price}
-        )
+        get_gas_price()
+        estimate = gold_contract.claim.estimate_gas(id, {"from": user})
     except Exception as e:
         print("Could not estimate gas!")
         print(f"Exception: {e}")
@@ -268,7 +264,8 @@ def gold_claim(id):
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
         try:
-            gold_contract.claim(id, {"from": user, "gas_price": gas_price})
+            get_gas_price()
+            gold_contract.claim(id, {"from": user})
             time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         except Exception as e:
@@ -315,10 +312,8 @@ def summoner_get_next_xp(level):
 
 def summoner_level_up(id):
     try:
-        gas_price = get_gas_price()
-        estimate = summoner_contract.level_up.estimate_gas(
-            id, {"from": user, "gas_price": gas_price}
-        )
+        get_gas_price()
+        estimate = summoner_contract.level_up.estimate_gas(id, {"from": user})
     except Exception as e:
         print("Could not estimate gas!")
         print(f"Exception: {e}")
@@ -326,7 +321,8 @@ def summoner_level_up(id):
 
     if (user.balance() / WEI_PER_GWEI) >= estimate:
         try:
-            summoner_contract.level_up(id, {"from": user, "gas_price": gas_price})
+            get_gas_price()
+            summoner_contract.level_up(id, {"from": user})
             time.sleep(MINIMUM_CONFIRMATION_TIME)
             return True
         except Exception as e:
