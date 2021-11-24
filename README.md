@@ -19,7 +19,7 @@ RarityFren interacts with the smart contracts published on Fantom directly, and 
 - Package Installer for Python (`pip`)
 
 ## Installation
-- (optional) Inside the `rarityfren` directory, create a virtual environment using `python3 -m venv .venv, then activate it with `source .venv/bin/activate`
+- (optional) Inside the `rarityfren` directory, create a virtual environment using `python3 -m venv .venv`, then activate it with `source .venv/bin/activate`
 - Install the necessary Python packages by executing pip3 -r requirements.txt`
 
 ## Brownie Setup
