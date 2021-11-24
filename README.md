@@ -26,7 +26,7 @@ RarityFren interacts with the smart contracts published on Fantom directly, and 
 - Create a dedicated account on the console using `brownie accounts new`, enter the private key from your Metamask wallet (or similar). Edit the `ADDRESS_USER` value in `adventure.py` to match the public address.
 - Create a [FTMScan API Key](https://ftmscan.com/myapikey) and save it to the `FTMSCAN_API_KEY` variable. 
 - Create a dedicated network for interacting with the Fantom blockchain by entering the following:
-`brownie networks add "Fantom" fantom chainid=250 host=https://rpc.ftm.tools explorer=https://ftmscan.com/api`
+`brownie networks add "Fantom" fantom chainid=250 host=https://rpc.ftm.tools explorer=https://api.ftmscan.com/api`
 **Note** Brownie comes with a built-in Fantom network labeled "ftm-main", which is outdated and often returns bad data when queried.
 
 ## Basic Use
