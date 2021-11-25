@@ -20,7 +20,7 @@ RarityFren interacts with the smart contracts published on Fantom directly, and 
 
 ## Installation
 - (optional) Inside the `rarityfren` directory, create a virtual environment using `python3 -m venv .venv`, then activate it with `source .venv/bin/activate`
-- Install the necessary Python packages by executing pip3 -r requirements.txt`
+- Install the necessary Python packages by executing `pip3 install -r requirements.txt`
 
 ## Brownie Setup
 - Create a dedicated account on the console using `brownie accounts new`, enter the private key from your Metamask wallet (or similar). Edit the `ADDRESS_USER` value in `adventure.py` to match the public address.
