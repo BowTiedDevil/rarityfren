@@ -167,7 +167,11 @@ def main():
 
 def account_get_balance():
     """Return account balance in gwei"""
-    return user.balance() / WEI_PER_GWEI
+    try:
+        return user.balance() / WEI_PER_GWEI
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def account_get_summoners():
@@ -182,7 +186,8 @@ def account_get_summoners():
                 # Prepare empty sub-dictionaries
                 summoners[int(metadata["tokenID"])] = {}
         return True
-    except:
+    except Exception as e:
+        print(f"Exception: {e}")
         return False
 
 
@@ -210,7 +215,11 @@ def adventure_cellar(id):
 
 
 def adventure_get_log(id):
-    return {"Adventure Log": summoner_contract.adventurers_log.call(id)}
+    try:
+        return {"Adventure Log": summoner_contract.adventurers_log.call(id)}
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def adventure_summoner(id):
@@ -277,37 +286,53 @@ def gold_claim(id):
 
 
 def gold_get_claimable(id):
-    return {"Claimable Gold": gold_contract.claimable.call(id) // DECIMALS}
+    try:
+        return {"Claimable Gold": gold_contract.claimable.call(id) // DECIMALS}
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def get_gas_price():
-    response = requests.get(
-        "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
-    )
-    if response.status_code == 200 and response.json()["message"] == "OK":
-        # Python's int() cannot convert a floating point number
-        # stored as a string, so we convert to float first since
-        # the API sometimes returns a value with a decimal
-        network.gas_price(
-            f'{int(GAS_BUFFER * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
+    try:
+        response = requests.get(
+            "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
         )
+        if response.status_code == 200 and response.json()["message"] == "OK":
+            # Python's int() cannot convert a floating point number
+            # stored as a string, so we convert to float first since
+            # the API sometimes returns a value with a decimal
+            network.gas_price(
+                f'{int(GAS_BUFFER * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
+            )
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def summoner_get_stats(id):
-    # The summoner contract call will return a tuple of summoner info of
-    # form (XP, Log, ClassNumber, Level). "Log" is a unix timestamp for
-    # the next available adventure
-    tx = summoner_contract.summoner.call(id)
-    return {
-        "XP": tx[0] // DECIMALS,
-        "Adventure Log": tx[1],
-        "Class Name": CLASSES[tx[2]],
-        "Level": tx[3],
-    }
+    try:
+        # The summoner contract call will return a tuple of summoner info of
+        # form (XP, Log, ClassNumber, Level). "Log" is a unix timestamp for
+        # the next available adventure
+        tx = summoner_contract.summoner.call(id)
+        return {
+            "XP": tx[0] // DECIMALS,
+            "Adventure Log": tx[1],
+            "Class Name": CLASSES[tx[2]],
+            "Level": tx[3],
+        }
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def summoner_get_next_xp(level):
-    return {"XP_LevelUp": summoner_contract.xp_required.call(level) // DECIMALS}
+    try:
+        return {"XP_LevelUp": summoner_contract.xp_required.call(level) // DECIMALS}
+    except Exception as e:
+        print(f"Exception: {e}")
+        return False
 
 
 def summoner_level_up(id):
