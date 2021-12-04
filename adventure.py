@@ -55,7 +55,8 @@ MINIMUM_CONFIRMATION_TIME = (
     10  # How long to wait (in seconds) after a successful confirmation
 )
 
-GAS_BUFFER = 1.1  # Add 10% to value found in get_gas()
+
+GAS_LIMIT = 500  # Maximum gas price (in gwei) that we'll accept for a transaction
 
 
 def main():
@@ -298,13 +299,17 @@ def get_gas_price():
         response = requests.get(
             "https://gftm.blockscan.com/gasapi.ashx?apikey=key&method=gasoracle"
         )
-        if response.status_code == 200 and response.json()["message"] == "OK":
+        if (response.status_code == 200) and (response.json()["message"] == "OK"):
             # Python's int() cannot convert a floating point number
             # stored as a string, so we convert to float first since
             # the API sometimes returns a value with a decimal
-            network.gas_price(
-                f'{int(GAS_BUFFER * float(response.json()["result"]["ProposeGasPrice"]))} gwei'
-            )
+            result = int(float(response.json()["result"]["SafeGasPrice"]))
+            if result <= GAS_LIMIT:
+                network.gas_price(
+                    f'{int(float(response.json()["result"]["SafeGasPrice"]))} gwei'
+                )
+            else:
+                network.gas_price(f"{GAS_LIMIT} gwei")
     except Exception as e:
         print(f"Exception: {e}")
         return False
