@@ -157,7 +157,7 @@ def main():
             # to prevent excessive looping
             if (
                 time.time() > summoners[id]["Cellar Log"]
-                and cellar_contract.scout.call(id)
+                and scout_cellar(id)
                 and adventure_cellar(id)
             ):
                 summoners[id].update(cellar_get_log(id))
@@ -213,6 +213,16 @@ def adventure_cellar(id):
     else:
         print("Insufficent account balance to send transaction")
         return False
+
+
+def scout_cellar(id):
+    try:
+        if cellar_contract.scout.call(id):
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(f"Exception {e}")
 
 
 def adventure_get_log(id):
